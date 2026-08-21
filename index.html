@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#153029">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Bolinj Masjid Trust Parking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#153029;
+    --paper:#F5F2EA;
+    --card:#FFFFFF;
+    --accent:#C6A15B;
+    --accent-ink:#2B2109;
+    --paid:#1F7A5C;
+    --paid-bg:#E3F5EC;
+    --unpaid:#B23A2E;
+    --unpaid-bg:#FBEAE7;
+    --muted:#6E7573;
+    --border:#E1DED2;
+    --shadow: 0 2px 10px rgba(21,48,41,0.07);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding-bottom:88px;
+  }
+  h1,h2,h3,.display{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    letter-spacing:0;
+  }
+  .mono{ font-family:'IBM Plex Mono',monospace; }
+  .app{ max-width:520px; margin:0 auto; padding:0 14px; }
+  @media (min-width:860px){
+    body{ padding-bottom:24px; }
+    .app{ max-width:920px; }
+  }
+
+  /* Header */
+  header.top{
+    background:var(--ink);
+    color:var(--paper);
+    padding:18px 0 14px;
+    position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  }
+  header.top .inner{ max-width:520px; margin:0 auto; padding:0 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  @media (min-width:860px){ header.top .inner{ max-width:920px; } }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .badge{
+    width:38px;height:38px;border-radius:8px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Poppins',sans-serif;font-weight:800;color:var(--accent-ink);font-size:20px;
+    transform:rotate(-4deg);
+  }
+  .brand h1{ margin:0; font-size:22px; line-height:1; color:#fff; }
+  .brand p{ margin:2px 0 0; font-size:11px; color:#B9BCC9; letter-spacing:0.08em; text-transform:uppercase; font-family:'Inter'; font-weight:600;}
+  select.yearpick{
+    background:black; border:1.5px solid #454A5E; color:#fff; border-radius:8px;
+    padding:7px 10px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;
+  }
+
+  /* Desktop nav (top pill row) */
+  nav.tabs{
+    display:flex; gap:6px; max-width:520px; margin:10px auto 14px; padding:0 14px;
+  }
+  @media (min-width:860px){ nav.tabs{ max-width:920px; } }
+  nav.tabs button{
+    flex:1; padding:9px 6px; border:none; border-radius:10px; background:var(--card);
+    font-family:'Poppins'; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;
+    font-size:14px; color:var(--muted); cursor:pointer; box-shadow:var(--shadow); border:1px solid var(--border);
+  }
+  nav.tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  main{ padding-bottom:20px; }
+
+  /* Dashboard cards */
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (min-width:860px){ .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; } }
+  .stat{
+    background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); border:1px solid var(--border);
+  }
+  .stat.clickable{ cursor:pointer; transition:transform .12s, box-shadow .12s; }
+  .stat.clickable:hover{ box-shadow:0 4px 14px rgba(21,48,41,0.12); transform:translateY(-1px); }
+  .stat.clickable:active{ transform:translateY(0); }
+  .stat .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-weight:600; margin-bottom:6px;}
+  .stat .amt{ font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; }
+  .stat.paid .amt{ color:var(--paid); }
+  .stat.unpaid .amt{ color:var(--unpaid); }
+  .stat .sub{ font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .section-title{ display:flex; align-items:center; justify-content:space-between; margin:22px 0 10px; }
+  .section-title h2{ font-size:20px; margin:0; }
+  .section-title .count{ font-size:12px; color:var(--muted); font-family:'IBM Plex Mono'; }
+
+  /* Filters */
+  .filters{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); margin-top:14px;}
+  .filters .row{ display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .filters input[type=text]{
+    flex:1; min-width:110px; padding:9px 10px; border:1px solid var(--border); border-radius:9px; font-family:'Inter'; font-size:14px; background:var(--paper);
+  }
+  .seg{ display:flex; border:1px solid var(--border); border-radius:9px; overflow:hidden; }
+  .seg button{ flex:1; border:none; background:var(--card); padding:8px 10px; font-family:'Poppins'; font-weight:700; text-transform:uppercase; font-size:13px; color:var(--muted); cursor:pointer;}
+  .seg button.active.all{ background:var(--ink); color:#fff;}
+  .seg button.active.paidbtn{ background:var(--paid); color:#fff;}
+  .seg button.active.unpaidbtn{ background:var(--unpaid); color:#fff;}
+  .filters select{ padding:8px 8px; border-radius:9px; border:1px solid var(--border); background:var(--paper); font-family:'IBM Plex Mono'; font-size:13px;}
+
+  /* Vehicle card */
+  .vcard{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); margin-top:12px; overflow:hidden; }
+  .vcard .head{ padding:13px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:10px;}
+  .vcard .who .name{ font-family:'Poppins'; font-weight:800; font-size:19px; text-transform:none; letter-spacing:0; }
+  .vcard .who .auto{ font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--muted); background:var(--paper); padding:2px 7px; border-radius:5px; display:inline-block; margin-top:3px;}
+  .vcard .figs{ text-align:right; font-family:'IBM Plex Mono'; }
+  .vcard .figs .p{ color:var(--paid); font-size:13.5px; font-weight:600; }
+  .vcard .figs .u{ color:var(--unpaid); font-size:13.5px; font-weight:600; }
+  .chev{ color:var(--muted); font-size:18px; transition:transform .15s; }
+  .vcard.open .chev{ transform:rotate(180deg); }
+
+  .vcard .body{ display:none; border-top:1px dashed var(--border); padding:14px; }
+  .vcard.open .body{ display:block; }
+
+  .months{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  @media (min-width:520px){ .months{ grid-template-columns:repeat(4,1fr);} }
+  .mstub{
+    border:1.5px dashed var(--border); border-radius:10px; padding:10px; position:relative; background:var(--paper);
+    display:flex; align-items:center; gap:10px; cursor:pointer; flex-wrap:wrap;
+  }
+  .mstub:hover{ border-color:var(--ink); }
+  .mstub-main{ display:flex; flex-direction:column; min-width:52px; }
+  .mstub .mn{ font-family:'Poppins'; font-weight:700; font-size:14px; text-transform:uppercase; }
+  .mstub .amt{ font-family:'IBM Plex Mono'; font-size:12px; color:var(--muted); }
+  .mstub button.toggle{
+    border:none; border-radius:8px; padding:9px 12px; font-family:'Poppins'; font-weight:700;
+    text-transform:uppercase; font-size:12.5px; letter-spacing:0.03em; cursor:pointer; white-space:nowrap;
+  }
+  .mstub.paid{ background:var(--paid-bg); border-color:var(--paid); }
+  .mstub.paid .amt{ color:var(--paid); font-weight:600; }
+  .mstub.paid button.toggle{ background:var(--paid); color:#fff; }
+  .mstub.unpaid button.toggle{ background:var(--unpaid-bg); color:var(--unpaid); border:1px solid var(--unpaid); }
+  .mstub .mini{ display:flex; gap:6px; margin-left:auto; }
+  .mstub .mini button.micon{
+    background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--muted); font-size:16px;
+    cursor:pointer; padding:8px 10px; min-width:38px; min-height:38px; display:flex; align-items:center; justify-content:center;
+  }
+  .mstub .mini button.micon:hover{ color:var(--ink); border-color:var(--ink); }
+
+  .vcard .actions{ display:flex; gap:8px; margin-top:14px; }
+  .btn{ border:none; border-radius:9px; padding:9px 12px; font-family:'Poppins'; font-weight:700; text-transform:uppercase; font-size:13px; cursor:pointer; letter-spacing:0.03em;}
+  .btn.primary{ background:var(--ink); color:#fff; }
+  .btn.ghost{ background:var(--paper); color:var(--ink); border:1px solid var(--border); }
+  .btn.danger{ background:var(--unpaid-bg); color:var(--unpaid); border:1px solid var(--unpaid); }
+  .btn.small{ padding:6px 10px; font-size:12px; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .empty{ text-align:center; padding:40px 16px; color:var(--muted); }
+  .empty .big{ font-size:40px; margin-bottom:6px; }
+
+  /* Visual cues so selects and search fields read as interactive */
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7573' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:14px;
+    padding-right:30px !important;
+  }
+  select.yearpick{
+    padding-right:26px !important;
+  }
+  #searchName, #searchAuto{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7573' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'></circle><line x1='21' y1='21' x2='16.65' y2='16.65'></line></svg>");
+    background-repeat:no-repeat;
+    background-position:left 10px center;
+    background-size:15px;
+    padding-left:32px !important;
+  }
+
+  /* FAB */
+  .fab{
+    position:fixed; right:20px; bottom:96px; z-index:30;
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:50px;
+    padding:15px 20px; font-family:'Poppins'; font-weight:800; text-transform:uppercase; font-size:15px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.22); cursor:pointer; display:flex; align-items:center; gap:8px;
+  }
+  .fab:active{ transform:scale(0.97); }
+  @media (min-width:860px){ .fab{ bottom:28px; } }
+
+  /* Modal */
+  .overlay{ position:fixed; inset:0; background:rgba(20,22,30,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50; }
+  .overlay.show{ display:flex; }
+  @media (min-width:640px){ .overlay{ align-items:center; } }
+  .modal{ background:var(--card); width:100%; max-width:480px; border-radius:16px 16px 0 0; padding:20px; max-height:88vh; overflow-y:auto; }
+  @media (min-width:640px){ .modal{ border-radius:16px; } }
+  .modal h2{ margin:0 0 14px; font-size:22px; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:5px;}
+  .field input, .field select{
+    width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:9px; font-family:'Inter'; font-size:15px; background:var(--paper);
+  }
+  .row2{ display:flex; gap:10px; }
+  .row2 .field{ flex:1; }
+  .monthgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:4px; }
+  .monthgrid label{
+    display:flex; align-items:center; justify-content:center; gap:0; padding:8px 0; border:1px solid var(--border); border-radius:8px;
+    font-family:'IBM Plex Mono'; font-size:12.5px; cursor:pointer; text-transform:none; color:var(--ink); font-weight:500;
+  }
+  .monthgrid input{ display:none; }
+  .monthgrid input:checked + span{ color:#fff; }
+  .monthgrid label:has(input:checked){ background:var(--ink); border-color:var(--ink); color:#fff; }
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .modal-actions .btn{ flex:1; padding:11px; font-size:14px; }
+  .close-x{ position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:var(--muted); cursor:pointer; }
+  .modal{ position:relative; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:-4px; margin-bottom:12px; }
+
+  /* Bottom nav mobile */
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border);
+    display:flex; z-index:25; box-shadow:0 -2px 10px rgba(0,0,0,0.06);
+  }
+  nav.bottom button{
+    flex:1; padding:10px 0 8px; border:none; background:none; color:var(--muted); cursor:pointer;
+    font-family:'Poppins'; font-weight:700; text-transform:uppercase; font-size:12px; display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  nav.bottom button .ic{ font-size:18px; }
+  nav.bottom button.active{ color:var(--ink); }
+  nav.bottom button.active .ic{ color:var(--accent-ink); }
+  @media (min-width:860px){ nav.bottom{ display:none; } }
+  nav.tabs{ display:none; }
+  @media (min-width:860px){ nav.tabs{ display:flex; } }
+
+  /* Reports */
+  .subtabs{ display:flex; gap:6px; margin-top:14px; }
+  .subtabs button{ flex:1; padding:8px 6px; border-radius:9px; border:1px solid var(--border); background:var(--card); font-family:'Poppins'; font-weight:700; text-transform:uppercase; font-size:12.5px; color:var(--muted); cursor:pointer;}
+  .subtabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  table.rep{ width:100%; border-collapse:collapse; margin-top:14px; background:var(--card); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); border:1px solid var(--border); }
+  table.rep th{ background:var(--ink); color:#fff; text-align:left; padding:9px 10px; font-family:'Poppins'; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.03em;}
+  table.rep td{ padding:9px 10px; font-size:13.5px; border-top:1px solid var(--border); font-family:'Inter'; }
+  table.rep td.nm{ font-family:'Inter'; font-weight:600; }
+  table.rep tr.total td{ font-weight:700; background:var(--paper); }
+  .badge-tag{ display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-family:'Inter'; font-weight:700; text-transform:uppercase;}
+  .badge-tag.paid{ background:var(--paid-bg); color:var(--paid); }
+  .badge-tag.unpaid{ background:var(--unpaid-bg); color:var(--unpaid); }
+
+  .report-select{ margin-top:12px; padding:10px; border-radius:9px; border:1px solid var(--border); width:100%; font-family:'Inter'; font-size:14px; background:var(--card); }
+  .toast{
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:30px;
+    font-size:13px; font-family:'Inter'; font-weight:500; z-index:60; opacity:0; pointer-events:none; transition:opacity .2s, bottom .2s;
+  }
+  .toast.show{ opacity:1; bottom:100px; }
+  @media (min-width:860px){ .toast{ bottom:24px; } .toast.show{ bottom:34px; } }
+
+
+  /* Mobile / touch compatibility */
+  html{
+    width:100%;
+    min-width:0;
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+    touch-action:manipulation;
+  }
+  body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    overscroll-behavior-x:none;
+    padding-bottom:calc(88px + env(safe-area-inset-bottom));
+  }
+  button, input, select, textarea{
+    font:inherit;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  button, .vcard .head, .mstub button, .fab, nav.bottom button{
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  input, select, button{
+    min-height:42px;
+  }
+  .app, header.top .inner{
+    width:100%;
+    max-width:520px;
+  }
+  .app{padding-left:12px;padding-right:12px;}
+  header.top .inner{padding-left:12px;padding-right:12px;}
+  .brand{min-width:0;flex:1;}
+  .brand h1{font-size:clamp(17px,5vw,22px);line-height:1.05;white-space:normal;}
+  .brand p{font-size:9px;}
+  .brand .badge{flex:0 0 38px;}
+  select.yearpick{flex:0 0 auto;min-height:40px;padding:7px 8px;font-size:13px;}
+  .grid2{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat{min-width:0;padding:12px;}
+  .stat .amt{font-size:19px;overflow-wrap:anywhere;}
+  .filters .row{width:100%;}
+  .filters input[type=text], .filters select{min-width:0;flex:1 1 100%;width:100%;}
+  .seg{width:100%;}
+  .seg button{min-height:40px;padding:8px 6px;}
+  .vcard .head{padding:12px 11px;gap:7px;}
+  .vcard .who{min-width:0;flex:1;}
+  .vcard .who .name{font-size:17px;overflow-wrap:anywhere;}
+  .vcard .figs{flex:0 0 auto;}
+  .vcard .body{padding:12px;}
+  .months{grid-template-columns: repeat(1, minmax(0, 1fr));gap:8px;}
+  .mstub{min-width:0;padding:10px;}
+  .mstub .mn{font-size:13px;}
+  .mstub .amt{font-size:11px;}
+  .vcard .actions{flex-wrap:wrap;}
+  .vcard .actions .btn{flex:1 1 140px;min-height:42px;}
+  .fab{
+    right:12px;
+    bottom:calc(92px + env(safe-area-inset-bottom));
+    min-height:48px;
+    padding:12px 16px;
+    font-size:14px;
+  }
+  nav.bottom{padding-bottom:env(safe-area-inset-bottom);}
+  nav.bottom button{min-height:58px;padding:8px 2px 6px;}
+  .overlay{padding-top:env(safe-area-inset-top);}
+  .modal{
+    width:100%;
+    max-width:520px;
+    max-height:calc(100dvh - env(safe-area-inset-top));
+    padding:18px 14px calc(18px + env(safe-area-inset-bottom));
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .row2{flex-direction:column;gap:0;}
+  .monthgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+  .monthgrid label{min-height:42px;}
+  .modal-actions{position:sticky;bottom:0;background:var(--card);padding-top:10px;}
+  .modal-actions .btn{min-height:46px;}
+  .subtabs{overflow-x:auto;scrollbar-width:none;}
+  .subtabs::-webkit-scrollbar{display:none;}
+  .subtabs button{min-width:100px;min-height:42px;}
+  .report-select{min-height:44px;}
+  .report-table-wrap{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    margin-top:14px;
+    border-radius:var(--radius);
+  }
+  table.rep{
+    margin-top:0;
+    min-width:620px;
+  }
+  .toast{
+    width:calc(100% - 32px);
+    max-width:420px;
+    text-align:center;
+    bottom:calc(82px + env(safe-area-inset-bottom));
+  }
+  .toast.show{bottom:calc(92px + env(safe-area-inset-bottom));}
+  @media (max-width:380px){
+    .app{padding-left:9px;padding-right:9px;}
+    header.top .inner{padding-left:9px;padding-right:9px;}
+    .brand h1{font-size:16px;}
+    .brand .badge{width:34px;height:34px;flex-basis:34px;}
+    select.yearpick{font-size:12px;padding-left:6px;padding-right:6px;}
+    .grid2{grid-template-columns:1fr;}
+  }
+  @media (min-width:640px){
+    .modal{padding-bottom:20px;}
+  }
+  /* Desktop: no bottom nav bar, so the FAB can sit lower and full-sized;
+     also restore a multi-column month grid since there's more room */
+  @media (min-width:860px){
+    .fab{ right:24px; bottom:28px; padding:15px 20px; font-size:15px; min-height:auto; }
+    .months{ grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .mstub{ padding:12px; }
+    .mstub .mn{ font-size:14px; }
+    .mstub .amt{ font-size:12px; }
+  }
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">P</div>
+      <div>
+        <h1>Bolinj Masjid Trust Parking</h1>
+        <p>Parking Management</p>
+      </div>
+    </div>
+    <select class="yearpick" id="globalYear"></select>
+  </div>
+</header>
+
+<div class="app">
+  <nav class="tabs" id="deskTabs"></nav>
+  <main id="main"></main>
+</div>
+
+<nav class="bottom" id="mobileTabs"></nav>
+
+<button class="fab" id="fabAdd">＋ Add Entry</button>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- Data layer ---------------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const NOW = new Date();
+const CURRENT_YEAR = NOW.getFullYear();
+const CURRENT_MONTH = NOW.getMonth()+1;
+const STORAGE_KEY = 'parking-data';
+
+let data = { vehicles: [], payments: [] };
+
+let state = {
+  tab: 'dashboard',
+  year: CURRENT_YEAR,
+  vFilterMonth: CURRENT_MONTH,
+  vFilterStatus: 'all',
+  searchName: '',
+  searchAuto: '',
+  expanded: null,
+  reportTab: 'overall',
+  reportYear: CURRENT_YEAR,
+  reportVehicleId: null,
+  reportMonth: CURRENT_MONTH,
+};
+
+function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n){ return '₹' + Math.round(Number(n)||0).toLocaleString('en-IN'); }
+
+/* Persistent browser storage
+   localStorage survives page refreshes and normal browser restarts.
+   We also keep a copy in the original window.storage API when available,
+   so existing data from that environment can be migrated automatically.
+*/
+const LOCAL_STORAGE_KEY = 'bolinj-masjid-trust-parking-data-v1';
+
+function normalizeData(raw){
+  if(!raw || typeof raw !== 'object') raw = {};
+  if(!Array.isArray(raw.vehicles)) raw.vehicles = [];
+  if(!Array.isArray(raw.payments)) raw.payments = [];
+  if(!Array.isArray(raw.dues)) raw.dues = [];
+  return raw;
+}
+
+async function loadData(){
+  let loaded = false;
+
+  // 1. Preferred persistent storage: browser localStorage.
+  try{
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if(saved){
+      data = normalizeData(JSON.parse(saved));
+      loaded = true;
+    }
+  }catch(e){
+    console.warn('localStorage read failed:', e);
+  }
+
+  // 2. If localStorage is empty, try the original storage API and migrate it.
+  if(!loaded){
+    try{
+      if(window.storage && typeof window.storage.get === 'function'){
+        const res = await window.storage.get(STORAGE_KEY, false);
+        if(res && res.value){
+          data = normalizeData(JSON.parse(res.value));
+          loaded = true;
+          try{
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+          }catch(migrateError){
+            console.warn('Could not migrate data to localStorage:', migrateError);
+          }
+        }
+      }
+    }catch(e){
+      console.warn('Legacy storage read failed:', e);
+    }
+  }
+
+  data = normalizeData(data);
+}
+
+async function saveData(){
+  const serialized = JSON.stringify(normalizeData(data));
+  let saved = false;
+
+  // Save locally first. This is what makes data survive refreshes.
+  try{
+    localStorage.setItem(LOCAL_STORAGE_KEY, serialized);
+    saved = localStorage.getItem(LOCAL_STORAGE_KEY) === serialized;
+  }catch(e){
+    console.error('localStorage save failed:', e);
+  }
+
+  // Keep the original storage API in sync when it exists.
+  try{
+    if(window.storage && typeof window.storage.set === 'function'){
+      await window.storage.set(STORAGE_KEY, serialized, false);
+      saved = true;
+    }
+  }catch(e){
+    console.warn('Legacy storage save failed:', e);
+  }
+
+  if(!saved){
+    showToast('Could not save data — browser storage is unavailable');
+    console.error('No persistent storage was available.');
+  }
+}
+
+function getVehicle(id){ return data.vehicles.find(v=>v.id===id); }
+function cleanAutoNo(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+const VEHICLE_TYPES = ['Auto','Car','Bike','Bus','Truck','Other'];
+function findOrCreateVehicle(name, autoNo, autoNo2, vehicleType){
+  name = name.trim(); autoNo = cleanAutoNo(autoNo); autoNo2 = cleanAutoNo(autoNo2);
+  vehicleType = vehicleType || 'Auto';
+  let v = data.vehicles.find(v => v.name.toLowerCase()===name.toLowerCase() && v.autoNo.toUpperCase()===autoNo);
+  if(!v){ v = {id: uid('veh'), name, autoNo, autoNo2, vehicleType}; data.vehicles.push(v); }
+  else { v.name = name; v.autoNo = autoNo; v.autoNo2 = autoNo2 || v.autoNo2 || ''; v.vehicleType = vehicleType || v.vehicleType || 'Auto'; }
+  return v;
+}
+
+function paymentFor(vehicleId, year, month){
+  return data.payments.find(p=>p.vehicleId===vehicleId && p.year===year && p.month===month);
+}
+function vehiclePaymentsForYear(vehicleId, year){
+  const map = {};
+  data.payments.filter(p=>p.vehicleId===vehicleId && p.year===year).forEach(p=> map[p.month]=p);
+  return map;
+}
+function vehicleAllTimePaid(vehicleId){
+  return data.payments.filter(p=>p.vehicleId===vehicleId).reduce((s,p)=>s+Number(p.amount||0),0);
+}
+function elapsedMonths(year){
+  if(year < CURRENT_YEAR) return 12;
+  if(year > CURRENT_YEAR) return 0;
+  return CURRENT_MONTH;
+}
+/* Manually-set "amount due" for a month — 0 unless the user has explicitly set it. */
+function getDue(vehicleId, year, month){
+  const d = data.dues.find(x=>x.vehicleId===vehicleId && x.year===year && x.month===month);
+  return d ? Number(d.amount) : 0;
+}
+function setDue(vehicleId, year, month, amount){
+  data.dues = data.dues.filter(x=>!(x.vehicleId===vehicleId && x.year===year && x.month===month));
+  if(Number(amount) > 0){
+    data.dues.push({id: uid('due'), vehicleId, year, month, amount: Number(amount)});
+  }
+  saveData(); render(); showToast('Amount updated');
+}
+function vehicleUnpaidForYear(vehicleId, year){
+  const paidMonths = vehiclePaymentsForYear(vehicleId, year);
+  const cap = elapsedMonths(year);
+  let total = 0;
+  for(let m=1;m<=cap;m++){ if(!paidMonths[m]) total += getDue(vehicleId, year, m); }
+  return total;
+}
+function vehiclePaidForYear(vehicleId, year){
+  return data.payments.filter(p=>p.vehicleId===vehicleId && p.year===year).reduce((s,p)=>s+Number(p.amount||0),0);
+}
+
+function addEntry({name, autoNo, autoNo2, vehicleType, date, year, months, amount}){
+  const v = findOrCreateVehicle(name, autoNo, autoNo2, vehicleType);
+  months.forEach(m=>{
+    data.payments = data.payments.filter(p=>!(p.vehicleId===v.id && p.year===year && p.month===m));
+    data.payments.push({id: uid('pay'), vehicleId: v.id, year, month: m, amount: Number(amount), date});
+  });
+  saveData();
+  render();
+  showToast(months.length>1 ? months.length+' months marked paid' : 'Entry added');
+}
+function markUnpaid(vehicleId, year, month){
+  const existing = paymentFor(vehicleId, year, month);
+  if(!existing) return;
+  data.payments = data.payments.filter(p=>p!==existing);
+  saveData(); render();
+  showToast(MONTHS[month-1]+' '+year+' marked unpaid');
+}
+function markPaid(vehicleId, year, month, amount, date){
+  data.payments = data.payments.filter(p=>!(p.vehicleId===vehicleId && p.year===year && p.month===month));
+  data.payments.push({id: uid('pay'), vehicleId, year, month, amount: Number(amount)||0, date: date||todayISO()});
+  saveData(); render();
+  showToast(MONTHS[month-1]+' '+year+' marked paid');
+}
+function editPayment(paymentId, amount, date){
+  const p = data.payments.find(p=>p.id===paymentId);
+  if(p){ p.amount = Number(amount); p.date = date; saveData(); render(); showToast('Entry updated'); }
+}
+function deletePayment(paymentId){
+  data.payments = data.payments.filter(p=>p.id!==paymentId);
+  saveData(); render(); showToast('Entry deleted');
+}
+function deleteVehicle(vehicleId){
+  data.vehicles = data.vehicles.filter(v=>v.id!==vehicleId);
+  data.payments = data.payments.filter(p=>p.vehicleId!==vehicleId);
+  data.dues = data.dues.filter(d=>d.vehicleId!==vehicleId);
+  saveData(); render(); showToast('All entries deleted');
+}
+
+/* ---------------- Receipt (PDF) ---------------- */
+function receiptNo(p){ return 'PR-' + p.id.slice(-6).toUpperCase(); }
+function downloadReceipt(paymentId){
+  const p = data.payments.find(x=>x.id===paymentId);
+  if(!p){ showToast('Entry not found'); return; }
+  if(!window.jspdf){ showToast('Receipt tool still loading — try again in a moment'); return; }
+  const v = getVehicle(p.vehicleId);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:[80,165] });
+  const W = 80;
+  let y = 12;
+
+  // header bar
+  doc.setFillColor(21,48,41);
+  doc.rect(0,0,W,20,'F');
+  doc.setTextColor(198,161,91);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.text('BOLINJ MASJID TRUST PARKING', W/2, 9, {align:'center'});
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica','normal');
+  doc.text('PAYMENT RECEIPT', W/2, 15, {align:'center'});
+
+  y = 27;
+  doc.setTextColor(21,48,41);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.text('Receipt No.', 6, y); doc.setFont('helvetica','bold'); doc.text(receiptNo(p), W-6, y, {align:'right'});
+  y+=5;
+  doc.setFont('helvetica','normal');
+  doc.text('Issued On', 6, y); doc.setFont('helvetica','bold'); doc.text(todayISO(), W-6, y, {align:'right'});
+
+  y+=6;
+  doc.setDrawColor(200,197,188);
+  doc.setLineDashPattern([1,1],0);
+  doc.line(6,y,W-6,y);
+  y+=8;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('NAME', 6, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(v.name, 6, y+5);
+
+  y+=13;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('VEHICLE TYPE', 6, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(v.vehicleType||'Auto', 6, y+5);
+
+  y+=13;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('AUTO NO.', 6, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(v.autoNo + (v.autoNo2 ? '  /  '+v.autoNo2 : ''), 6, y+5);
+
+  y+=13;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('MONTH COVERED', 6, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(MONTHS[p.month-1] + ' ' + p.year, 6, y+5);
+
+  y+=13;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('DATE PAID', 6, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(p.date, 6, y+5);
+
+  y+=13;
+  doc.setLineDashPattern([1,1],0);
+  doc.line(6,y,W-6,y);
+  y+=10;
+
+  doc.setFillColor(228,245,238);
+  doc.rect(6,y-6,W-12,16,'F');
+  doc.setTextColor(31,122,92);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('AMOUNT PAID', 10, y-1);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('Rs. ' + Math.round(p.amount).toLocaleString('en-IN'), W-10, y+6, {align:'right'});
+
+  y+=20;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.setTextColor(21,48,41);
+  doc.text('BOLINJ MASJID TRUST', W/2, y, {align:'center'});
+  y+=8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('Thank you!', W/2, y, {align:'center'});
+
+  const filename = `Receipt_${v.name.replace(/\s+/g,'_')}_${MONTHS[p.month-1]}_${p.year}.pdf`;
+  doc.save(filename);
+  showToast('Receipt downloaded');
+}
+
+/* ---------------- Overall Report (PDF, all vehicles, every month) ---------------- */
+function fmtPdf(n){ return 'Rs. ' + Math.round(Number(n)||0).toLocaleString('en-IN'); }
+function downloadOverallReport(){
+  if(!window.jspdf){ showToast('Report tool still loading — try again in a moment'); return; }
+  if(data.vehicles.length===0){ showToast('No vehicles to report yet'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, H = 297, marginX = 15;
+  const year = state.reportYear;
+  let y = 0;
+
+  function drawHeader(){
+    doc.setFillColor(21,48,41);
+    doc.rect(0,0,W,22,'F');
+    doc.setTextColor(198,161,91);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(`Overall Report — ${year}`, marginX, 17);
+    doc.setFontSize(8);
+    doc.text(`Generated ${todayISO()}`, W-marginX, 17, {align:'right'});
+    y = 32;
+  }
+  function ensureSpace(need){
+    if(y + need > H-18){ doc.addPage(); drawHeader(); }
+  }
+  function drawMonthRow(x, rowY, month, yearPayments){
+    const p = yearPayments[month];
+    const isPaid = !!p;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.setTextColor(21,48,41);
+    doc.text(MONTHS[month-1], x, rowY);
+    doc.setFont('helvetica','normal');
+    if(isPaid){
+      doc.setTextColor(31,122,92);
+      doc.text('Paid', x+12, rowY);
+      doc.text(fmtPdf(p.amount), x+26, rowY);
+    } else {
+      doc.setTextColor(178,58,46);
+      doc.text('Unpaid', x+12, rowY);
+    }
+  }
+
+  drawHeader();
+  const sorted = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name));
+  let grandPaid = 0, grandUnpaid = 0;
+
+  sorted.forEach(v=>{
+    ensureSpace(66);
+    doc.setTextColor(21,48,41);
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text(v.name, marginX, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(110,117,115);
+    let subLine = (v.vehicleType||'Auto') + ' · ' + v.autoNo;
+    if(v.autoNo2) subLine += ' / ' + v.autoNo2;
+    doc.text(subLine, marginX, y+5);
+    y += 10;
+
+    const yearPayments = vehiclePaymentsForYear(v.id, year);
+    const colXLeft = marginX, colXRight = marginX + 90;
+    const rowH = 6;
+    for(let i=0;i<6;i++){
+      const rowY = y + i*rowH;
+      drawMonthRow(colXLeft, rowY, i+1, yearPayments);
+      drawMonthRow(colXRight, rowY, i+7, yearPayments);
+    }
+    y += 6*rowH + 4;
+
+    const paidYear = vehiclePaidForYear(v.id, year);
+    const unpaidYear = vehicleUnpaidForYear(v.id, year);
+    grandPaid += vehicleAllTimePaid(v.id);
+    grandUnpaid += unpaidYear;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.setTextColor(31,122,92);
+    doc.text('Paid ' + year + ': ' + fmtPdf(paidYear), marginX, y);
+    doc.setTextColor(178,58,46);
+    doc.text('Unpaid ' + year + ': ' + fmtPdf(unpaidYear), marginX+75, y);
+    y += 6;
+    doc.setDrawColor(225,222,210);
+    doc.line(marginX, y, W-marginX, y);
+    y += 8;
+  });
+
+  ensureSpace(34);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.setTextColor(21,48,41);
+  doc.text('Grand Total — ' + sorted.length + ' vehicle' + (sorted.length===1?'':'s'), marginX, y);
+  y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.setTextColor(31,122,92);
+  doc.text('Overall Paid (all-time): ' + fmtPdf(grandPaid), marginX, y);
+  y += 7;
+  doc.setTextColor(178,58,46);
+  doc.text('Overall Unpaid (' + year + '): ' + fmtPdf(grandUnpaid), marginX, y);
+
+  doc.save(`Overall_Report_${year}.pdf`);
+  showToast('Report downloaded');
+}
+
+/* ---------------- Monthly Report (PDF, all vehicles, one month) ---------------- */
+function downloadMonthlyReport(){
+  if(!window.jspdf){ showToast('Report tool still loading — try again in a moment'); return; }
+  if(data.vehicles.length===0){ showToast('No vehicles to report yet'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, H = 297, marginX = 15;
+  const year = state.reportYear, month = state.reportMonth;
+  let y = 0;
+
+  function drawHeader(){
+    doc.setFillColor(21,48,41);
+    doc.rect(0,0,W,22,'F');
+    doc.setTextColor(198,161,91);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(`Monthly Report — ${MONTHS[month-1]} ${year}`, marginX, 17);
+    doc.setFontSize(8);
+    doc.text(`Generated ${todayISO()}`, W-marginX, 17, {align:'right'});
+    y = 32;
+  }
+  function ensureSpace(need){ if(y + need > H-18){ doc.addPage(); drawHeader(); } }
+
+  drawHeader();
+  const sorted = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name));
+
+  // table header
+  function drawColHeader(){
+    doc.setFillColor(238,236,228);
+    doc.rect(marginX, y-5, W-marginX*2, 7, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.setTextColor(21,48,41);
+    doc.text('NAME', marginX+2, y);
+    doc.text('AUTO NO.', marginX+70, y);
+    doc.text('STATUS', marginX+120, y);
+    doc.text('AMOUNT', W-marginX-2, y, {align:'right'});
+    y += 8;
+  }
+  ensureSpace(14); drawColHeader();
+
+  let paidTotal = 0, unpaidTotal = 0;
+  sorted.forEach(v=>{
+    ensureSpace(9);
+    const p = paymentFor(v.id, year, month);
+    const due = getDue(v.id, year, month);
+    const amt = p ? Number(p.amount) : due;
+    if(p) paidTotal += Number(p.amount); else unpaidTotal += due;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(21,48,41);
+    doc.text(v.name, marginX+2, y);
+    let autoTxt = v.autoNo + (v.autoNo2 ? ' / '+v.autoNo2 : '');
+    doc.text(autoTxt, marginX+70, y);
+    if(p){ doc.setTextColor(31,122,92); doc.text('Paid', marginX+120, y); }
+    else { doc.setTextColor(178,58,46); doc.text('Unpaid', marginX+120, y); }
+    doc.setTextColor(21,48,41);
+    doc.text(fmtPdf(amt), W-marginX-2, y, {align:'right'});
+    y += 7;
+    doc.setDrawColor(230,228,220);
+    doc.line(marginX, y-3, W-marginX, y-3);
+  });
+
+  ensureSpace(26);
+  y += 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.setTextColor(21,48,41);
+  doc.text('Totals — ' + MONTHS[month-1] + ' ' + year, marginX, y);
+  y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.setTextColor(31,122,92);
+  doc.text('Paid: ' + fmtPdf(paidTotal), marginX, y);
+  doc.setTextColor(178,58,46);
+  doc.text('Unpaid: ' + fmtPdf(unpaidTotal), marginX+75, y);
+
+  doc.save(`Monthly_Report_${MONTHS[month-1]}_${year}.pdf`);
+  showToast('Report downloaded');
+}
+
+/* ---------------- Individual Report (PDF, one vehicle, every month) ---------------- */
+function downloadIndividualReport(){
+  if(!window.jspdf){ showToast('Report tool still loading — try again in a moment'); return; }
+  const v = getVehicle(state.reportVehicleId);
+  if(!v){ showToast('Select a vehicle first'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, H = 297, marginX = 15;
+  const year = state.reportYear;
+  let y = 0;
+
+  function drawHeader(){
+    doc.setFillColor(21,48,41);
+    doc.rect(0,0,W,22,'F');
+    doc.setTextColor(198,161,91);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(`Individual Report — ${year}`, marginX, 17);
+    doc.setFontSize(8);
+    doc.text(`Generated ${todayISO()}`, W-marginX, 17, {align:'right'});
+    y = 32;
+  }
+  function ensureSpace(need){ if(y + need > H-18){ doc.addPage(); drawHeader(); } }
+
+  drawHeader();
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.setTextColor(21,48,41);
+  doc.text(v.name, marginX, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  doc.setTextColor(110,117,115);
+  let subLine = (v.vehicleType||'Auto') + ' · ' + v.autoNo;
+  if(v.autoNo2) subLine += ' / ' + v.autoNo2;
+  doc.text(subLine, marginX, y+6);
+  y += 16;
+
+  const yearPayments = vehiclePaymentsForYear(v.id, year);
+
+  function drawColHeader(){
+    doc.setFillColor(238,236,228);
+    doc.rect(marginX, y-5, W-marginX*2, 7, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.setTextColor(21,48,41);
+    doc.text('MONTH', marginX+2, y);
+    doc.text('STATUS', marginX+50, y);
+    doc.text('DATE PAID', marginX+95, y);
+    doc.text('AMOUNT', W-marginX-2, y, {align:'right'});
+    y += 8;
+  }
+  ensureSpace(14); drawColHeader();
+
+  for(let m=1;m<=12;m++){
+    ensureSpace(9);
+    const p = yearPayments[m];
+    const amt = p ? Number(p.amount) : getDue(v.id, year, m);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(21,48,41);
+    doc.text(MONTHS[m-1] + ' ' + year, marginX+2, y);
+    if(p){ doc.setTextColor(31,122,92); doc.text('Paid', marginX+50, y); doc.setTextColor(21,48,41); doc.text(p.date, marginX+95, y); }
+    else { doc.setTextColor(178,58,46); doc.text('Unpaid', marginX+50, y); doc.setTextColor(21,48,41); doc.text('—', marginX+95, y); }
+    doc.text(fmtPdf(amt), W-marginX-2, y, {align:'right'});
+    y += 7;
+    doc.setDrawColor(230,228,220);
+    doc.line(marginX, y-3, W-marginX, y-3);
+  }
+
+  const paidYear = vehiclePaidForYear(v.id, year);
+  const unpaidYear = vehicleUnpaidForYear(v.id, year);
+  const allTime = vehicleAllTimePaid(v.id);
+
+  ensureSpace(34);
+  y += 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.setTextColor(21,48,41);
+  doc.text('Totals', marginX, y);
+  y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.setTextColor(31,122,92);
+  doc.text('Paid ' + year + ': ' + fmtPdf(paidYear), marginX, y);
+  doc.setTextColor(178,58,46);
+  doc.text('Unpaid ' + year + ': ' + fmtPdf(unpaidYear), marginX+75, y);
+  y += 7;
+  doc.setTextColor(21,48,41);
+  doc.text('All-time Paid: ' + fmtPdf(allTime), marginX, y);
+
+  doc.save(`Individual_Report_${v.name.replace(/\s+/g,'_')}_${year}.pdf`);
+  showToast('Report downloaded');
+}
+
+/* ---------------- Toast ---------------- */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------------- Filtering helper ---------------- */
+function filteredVehicles(){
+  return data.vehicles.filter(v=>{
+    if(state.searchName && !v.name.toLowerCase().includes(state.searchName.toLowerCase())) return false;
+    if(state.searchAuto){
+      const q = state.searchAuto.toLowerCase();
+      const matchesAuto = v.autoNo.toLowerCase().includes(q);
+      const matchesAuto2 = v.autoNo2 && v.autoNo2.toLowerCase().includes(q);
+      if(!matchesAuto && !matchesAuto2) return false;
+    }
+    if(state.vFilterStatus !== 'all'){
+      const p = paymentFor(v.id, state.year, state.vFilterMonth);
+      if(state.vFilterStatus === 'paid' && !p) return false;
+      if(state.vFilterStatus === 'unpaid' && p) return false;
+    }
+    return true;
+  }).sort((a,b)=> a.name.localeCompare(b.name));
+}
+
+/* ---------------- Render: shell ---------------- */
+function populateYearSelect(){
+  const sel = document.getElementById('globalYear');
+  const years = new Set([CURRENT_YEAR-1, CURRENT_YEAR, CURRENT_YEAR+1]);
+  data.payments.forEach(p=>years.add(p.year));
+  const sorted = [...years].sort((a,b)=>a-b);
+  sel.innerHTML = sorted.map(y=>`<option value="${y}" ${y===state.year?'selected':''}>${y}</option>`).join('');
+  sel.onchange = ()=>{ state.year = Number(sel.value); render(); };
+}
+
+const TABS = [
+  {id:'dashboard', label:'Dashboard', icon:'◆'},
+  {id:'vehicles', label:'Vehicles', icon:'🚗'},
+  {id:'reports', label:'Reports', icon:'▤'},
+];
+function renderTabs(){
+  const html = TABS.map(t=>`<button data-tab="${t.id}" class="${state.tab===t.id?'active':''}"><span class="ic">${t.icon}</span>${t.label}</button>`).join('');
+  document.getElementById('deskTabs').innerHTML = html;
+  document.getElementById('mobileTabs').innerHTML = html;
+  document.querySelectorAll('[data-tab]').forEach(b=> b.onclick = ()=>{ state.tab = b.dataset.tab; state.expanded=null; render(); });
+}
+
+function render(){
+  populateYearSelect();
+  renderTabs();
+  const main = document.getElementById('main');
+  if(state.tab==='dashboard'){ main.innerHTML = renderDashboard(); }
+  else if(state.tab==='vehicles'){ main.innerHTML = renderVehiclesTab(); renderVehicleListSection(); }
+  else { main.innerHTML = renderReportsTab(); }
+  wireDynamicHandlers();
+}
+
+/* ---------------- Dashboard ---------------- */
+function renderDashboard(){
+  const overallPaid = data.payments.filter(p=>p.year===state.year).reduce((s,p)=>s+Number(p.amount||0),0);
+  let overallUnpaid = 0;
+  data.vehicles.forEach(v=> overallUnpaid += vehicleUnpaidForYear(v.id, state.year));
+  const monthPaid = data.payments.filter(p=>p.year===state.year && p.month===CURRENT_MONTH).reduce((s,p)=>s+Number(p.amount||0),0);
+  let monthUnpaid = 0;
+  data.vehicles.forEach(v=>{ if(!paymentFor(v.id, state.year, CURRENT_MONTH)) monthUnpaid += getDue(v.id, state.year, CURRENT_MONTH); });
+
+  const vehicleCount = data.vehicles.length;
+  const paidThisMonthCount = data.vehicles.filter(v=>paymentFor(v.id, state.year, CURRENT_MONTH)).length;
+
+  return `
+    <div class="section-title"><h2>Overview</h2><span class="count">${vehicleCount} vehicles tracked</span></div>
+    <div class="grid2 grid4">
+      <div class="stat paid clickable" data-action="show-stat" data-type="overall-paid">
+        <div class="label">Overall Paid (${state.year})</div>
+        <div class="amt">${fmt(overallPaid)}</div>
+        <div class="sub">All vehicles, ${state.year}</div>
+      </div>
+      <div class="stat unpaid clickable" data-action="show-stat" data-type="overall-unpaid">
+        <div class="label">Overall Unpaid (${state.year})</div>
+        <div class="amt">${fmt(overallUnpaid)}</div>
+        <div class="sub">Elapsed months not yet paid</div>
+      </div>
+      <div class="stat paid clickable" data-action="show-stat" data-type="month-paid">
+        <div class="label">${MONTHS[CURRENT_MONTH-1]} ${state.year} Paid</div>
+        <div class="amt">${fmt(monthPaid)}</div>
+        <div class="sub">${paidThisMonthCount} of ${vehicleCount} vehicles</div>
+      </div>
+      <div class="stat unpaid clickable" data-action="show-stat" data-type="month-unpaid">
+        <div class="label">${MONTHS[CURRENT_MONTH-1]} ${state.year} Unpaid</div>
+        <div class="amt">${fmt(monthUnpaid)}</div>
+        <div class="sub">${vehicleCount-paidThisMonthCount} of ${vehicleCount} vehicles</div>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Needs Attention</h2><span class="count">unpaid this month</span></div>
+    ${renderAttentionList()}
+  `;
+}
+function renderAttentionList(){
+  const unpaid = data.vehicles.filter(v=>!paymentFor(v.id, state.year, CURRENT_MONTH));
+  if(unpaid.length===0) return `<div class="empty"><div class="big">✓</div>Everyone's paid up for ${MONTHS[CURRENT_MONTH-1]}.</div>`;
+  return unpaid.slice(0,8).map(v=>`
+    <div class="vcard">
+      <div class="head">
+        <div class="who">
+          <div class="name">${esc(v.name)}</div>
+          <span class="auto">${esc(v.autoNo)}</span>
+        </div>
+        <button class="btn small" data-action="mark-paid-now" data-id="${v.id}">Mark Paid</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------------- Vehicles tab ---------------- */
+function renderVehiclesTab(){
+  const monthOptions = MONTHS.map((m,i)=>`<option value="${i+1}" ${state.vFilterMonth===i+1?'selected':''}>${m}</option>`).join('');
+  return `
+    <div class="filters">
+      <div class="row">
+        <input type="text" id="searchName" placeholder="Search by name" value="${esc(state.searchName)}">
+        <input type="text" id="searchAuto" placeholder="Search by auto no." value="${esc(state.searchAuto)}">
+      </div>
+      <div class="row">
+        <select id="filterMonth" style="flex:1">${monthOptions}</select>
+        <div class="seg" style="flex:1.4">
+          <button data-status="all" class="${state.vFilterStatus==='all'?'active all':''}">All</button>
+          <button data-status="paid" class="${state.vFilterStatus==='paid'?'active paidbtn':''}">Paid</button>
+          <button data-status="unpaid" class="${state.vFilterStatus==='unpaid'?'active unpaidbtn':''}">Unpaid</button>
+        </div>
+      </div>
+    </div>
+    <div class="section-title"><h2>Vehicles</h2><span class="count" id="vehicleCount"></span></div>
+    <div id="vehicleListSection"></div>
+  `;
+}
+function renderVehicleListSection(){
+  const container = document.getElementById('vehicleListSection');
+  const countEl = document.getElementById('vehicleCount');
+  if(!container) return;
+  const list = filteredVehicles();
+  if(countEl) countEl.textContent = list.length + ' shown';
+  container.innerHTML = list.length===0
+    ? `<div class="empty"><div class="big">🅿️</div>No vehicles match. Try Add Entry to get started.</div>`
+    : list.map(v=>renderVehicleCard(v)).join('');
+  wireDynamicHandlers();
+}
+
+function renderVehicleCard(v){
+  const open = state.expanded === v.id;
+  const paidYear = vehiclePaidForYear(v.id, state.year);
+  const unpaidYear = vehicleUnpaidForYear(v.id, state.year);
+  const yearPayments = vehiclePaymentsForYear(v.id, state.year);
+
+  const monthsHtml = MONTHS.map((m,i)=>{
+    const month = i+1;
+    const p = yearPayments[month];
+    const isPaid = !!p;
+    const due = getDue(v.id, state.year, month);
+    return `
+      <div class="mstub ${isPaid?'paid':'unpaid'}" data-action="open-month-detail" data-vid="${v.id}" data-year="${state.year}" data-month="${month}">
+        <div class="mstub-main">
+          <span class="mn">${m}</span>
+          <span class="amt">${isPaid ? fmt(p.amount) : fmt(due)}</span>
+        </div>
+        <button class="toggle" data-action="toggle-month" data-vid="${v.id}" data-year="${state.year}" data-month="${month}">${isPaid?'Paid ✓':'Unpaid'}</button>
+        <div class="mini">
+          ${isPaid ? `
+            <button class="micon" data-action="download-receipt" data-id="${p.id}" title="Download Receipt">⬇</button>
+            <button class="micon" data-action="edit-payment" data-id="${p.id}" title="Edit">✎</button>
+            <button class="micon" data-action="quick-delete-payment" data-id="${p.id}" title="Delete">✕</button>
+          ` : `
+            <button class="micon" data-action="set-due" data-vid="${v.id}" data-year="${state.year}" data-month="${month}" title="Set Amount">✎</button>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="vcard ${open?'open':''}" data-vehicle-card="${v.id}">
+      <div class="head" data-action="toggle-expand" data-id="${v.id}">
+        <div class="who">
+          <div class="name">${esc(v.name)}</div>
+          <span class="auto">${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' / '+esc(v.autoNo2):''}</span>
+        </div>
+        <div class="figs">
+          <div class="p">Paid ${fmt(paidYear)}</div>
+          <div class="u">Unpaid ${fmt(unpaidYear)}</div>
+        </div>
+        <div class="chev">⌄</div>
+      </div>
+      <div class="body">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:8px;">${state.year} — 12 month ledger · tap a month to edit it, or tap Unpaid to mark it paid</div>
+        <div class="months">${monthsHtml}</div>
+        <div class="actions">
+          <button class="btn danger" data-action="delete-vehicle" data-id="${v.id}">Delete All Entries</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------------- Reports tab ---------------- */
+function renderReportsTab(){
+  return `
+    <div class="subtabs">
+      <button data-rtab="overall" class="${state.reportTab==='overall'?'active':''}">Overall</button>
+      <button data-rtab="monthly" class="${state.reportTab==='monthly'?'active':''}">Monthly</button>
+      <button data-rtab="individual" class="${state.reportTab==='individual'?'active':''}">Individual</button>
+    </div>
+    ${state.reportTab==='overall' ? renderOverallReport() : state.reportTab==='monthly' ? renderMonthlyReport() : renderIndividualReport()}
+  `;
+}
+
+function renderOverallReport(){
+  const rows = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name)).map(v=>{
+    const paid = vehicleAllTimePaid(v.id);
+    const unpaid = vehicleUnpaidForYear(v.id, state.reportYear);
+    return `<tr>
+      <td class="nm">${esc(v.name)}</td>
+      <td>${esc(v.vehicleType||'Auto')}</td>
+      <td>${esc(v.autoNo)}${v.autoNo2?`<br><span style="color:var(--muted); font-size:11.5px;">${esc(v.autoNo2)}</span>`:''}</td>
+      <td>${fmt(paid)}</td>
+      <td>${fmt(unpaid)}</td>
+    </tr>`;
+  }).join('');
+  const totalPaid = data.vehicles.reduce((s,v)=>s+vehicleAllTimePaid(v.id),0);
+  const totalUnpaid = data.vehicles.reduce((s,v)=>s+vehicleUnpaidForYear(v.id, state.reportYear),0);
+
+  return `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap;">
+      <div style="font-size:12.5px; color:var(--muted);">All-time paid totals, with unpaid calculated for <b class="mono">${state.reportYear}</b> (elapsed months).</div>
+      <button class="btn primary small" data-action="download-overall-report">⬇ Download Report</button>
+    </div>
+    ${data.vehicles.length===0 ? `<div class="empty"><div class="big">▤</div>No entries yet.</div>` : `
+    <div class="report-table-wrap"><table class="rep">
+      <thead><tr><th>Name</th><th>Type</th><th>Auto No.</th><th>Paid (all-time)</th><th>Unpaid (${state.reportYear})</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="total"><td colspan="3">Grand Total</td><td>${fmt(totalPaid)}</td><td>${fmt(totalUnpaid)}</td></tr>
+      </tbody>
+    </table></div>`}
+  `;
+}
+
+function renderMonthlyReport(){
+  const monthOptions = MONTHS.map((m,i)=>`<option value="${i+1}" ${state.reportMonth===i+1?'selected':''}>${m}</option>`).join('');
+  const rows = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name)).map(v=>{
+    const p = paymentFor(v.id, state.reportYear, state.reportMonth);
+    return `<tr>
+      <td class="nm">${esc(v.name)}</td>
+      <td>${esc(v.autoNo)}${v.autoNo2?`<br><span style="color:var(--muted); font-size:11.5px;">${esc(v.autoNo2)}</span>`:''}</td>
+      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}</td>
+      <td>${fmt(p ? p.amount : getDue(v.id, state.reportYear, state.reportMonth))}</td>
+      <td>${p ? `<button class="btn small ghost" data-action="download-receipt" data-id="${p.id}">⬇ Receipt</button>` : '—'}</td>
+    </tr>`;
+  }).join('');
+  const paidTotal = data.vehicles.reduce((s,v)=>{ const p=paymentFor(v.id,state.reportYear,state.reportMonth); return s + (p?Number(p.amount):0); },0);
+  const unpaidTotal = data.vehicles.reduce((s,v)=>{ const p=paymentFor(v.id,state.reportYear,state.reportMonth); return s + (p?0:getDue(v.id,state.reportYear,state.reportMonth)); },0);
+
+  return `
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <select class="report-select" id="reportMonthSel" style="flex:1; min-width:140px; margin-top:0;">${monthOptions}</select>
+      <button class="btn primary small" data-action="download-monthly-report" style="margin-top:0;">⬇ Download Report</button>
+    </div>
+    <div class="grid2" style="margin-top:12px;">
+      <div class="stat paid"><div class="label">Paid — ${MONTHS[state.reportMonth-1]} ${state.reportYear}</div><div class="amt">${fmt(paidTotal)}</div></div>
+      <div class="stat unpaid"><div class="label">Unpaid — ${MONTHS[state.reportMonth-1]} ${state.reportYear}</div><div class="amt">${fmt(unpaidTotal)}</div></div>
+    </div>
+    ${data.vehicles.length===0 ? `<div class="empty"><div class="big">▤</div>No entries yet.</div>` : `
+    <div class="report-table-wrap"><table class="rep">
+      <thead><tr><th>Name</th><th>Auto No.</th><th>Status</th><th>Amount</th><th>Receipt</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`}
+  `;
+}
+
+function renderIndividualReport(){
+  const options = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name))
+    .map(v=>`<option value="${v.id}" ${state.reportVehicleId===v.id?'selected':''}>${esc(v.name)} — ${esc(v.autoNo)}</option>`).join('');
+
+  if(data.vehicles.length===0) return `<div class="empty"><div class="big">▤</div>Add an entry first to see individual reports.</div>`;
+
+  if(!state.reportVehicleId || !getVehicle(state.reportVehicleId)) state.reportVehicleId = data.vehicles[0].id;
+  const v = getVehicle(state.reportVehicleId);
+  const yearPayments = vehiclePaymentsForYear(v.id, state.reportYear);
+  const rows = MONTHS.map((m,i)=>{
+    const month=i+1; const p = yearPayments[month];
+    return `<tr>
+      <td class="nm">${m} ${state.reportYear}</td>
+      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}</td>
+      <td>${fmt(p ? p.amount : getDue(v.id, state.reportYear, month))}</td>
+      <td>${p ? esc(p.date) : '—'}</td>
+      <td>${p ? `<button class="btn small ghost" data-action="download-receipt" data-id="${p.id}">⬇ Receipt</button>` : '—'}</td>
+    </tr>`;
+  }).join('');
+  const paidYear = vehiclePaidForYear(v.id, state.reportYear);
+  const unpaidYear = vehicleUnpaidForYear(v.id, state.reportYear);
+  const allTime = vehicleAllTimePaid(v.id);
+  const monthsPaidCount = Object.keys(vehiclePaymentsForYear(v.id, state.reportYear)).length;
+
+  return `
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <select class="report-select" id="reportVehicleSel" style="flex:1; min-width:180px; margin-top:0;">${options}</select>
+      <button class="btn primary small" data-action="download-individual-report" style="margin-top:0;">⬇ Download Report</button>
+    </div>
+    <div class="hint" style="margin-top:8px; font-size:13px;">${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' &nbsp;/&nbsp; '+esc(v.autoNo2):''}</div>
+    <div class="grid2 grid4" style="margin-top:12px;">
+      <div class="stat"><div class="label">All-time Paid</div><div class="amt">${fmt(allTime)}</div></div>
+      <div class="stat"><div class="label">Months Paid ${state.reportYear}</div><div class="amt">${monthsPaidCount}/12</div></div>
+      <div class="stat paid"><div class="label">Paid ${state.reportYear}</div><div class="amt">${fmt(paidYear)}</div></div>
+      <div class="stat unpaid"><div class="label">Unpaid ${state.reportYear}</div><div class="amt">${fmt(unpaidYear)}</div></div>
+    </div>
+    <div class="report-table-wrap"><table class="rep">
+      <thead><tr><th>Month</th><th>Status</th><th>Amount</th><th>Date Paid</th><th>Receipt</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="actions" style="margin-top:14px;">
+      <button class="btn danger" data-action="delete-vehicle" data-id="${v.id}">Delete All Entries for ${esc(v.name)}</button>
+    </div>
+  `;
+}
+
+/* ---------------- Modals ---------------- */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+  wireDynamicHandlers();
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+
+function nameDatalist(){
+  const names = [...new Set(data.vehicles.map(v=>v.name))];
+  return `<datalist id="dlNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`;
+}
+function autoDatalist(){
+  const autos = [...new Set(data.vehicles.map(v=>v.autoNo))];
+  return `<datalist id="dlAutos">${autos.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`;
+}
+
+function openAddModal(prefillVehicleId){
+  const pv = prefillVehicleId ? getVehicle(prefillVehicleId) : null;
+  const monthChecks = MONTHS.map((m,i)=>{
+    const month=i+1;
+    const checked = month===CURRENT_MONTH ? 'checked' : '';
+    return `<label><input type="checkbox" name="month" value="${month}" ${checked}><span>${m}</span></label>`;
+  }).join('');
+
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Add Entry</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="fName" list="dlNames" placeholder="e.g. Ramesh Kumar" value="${pv?esc(pv.name):''}">
+      ${nameDatalist()}
+    </div>
+    <div class="field">
+      <label>Vehicle Type</label>
+      <select id="fType">
+        ${VEHICLE_TYPES.map(t=>`<option value="${t}" ${pv&&pv.vehicleType===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Auto No.</label>
+        <input type="text" id="fAuto" list="dlAutos" placeholder="e.g. MH12AB1234" value="${pv?esc(pv.autoNo):''}" autocapitalize="characters">
+        ${autoDatalist()}
+      </div>
+      <div class="field">
+        <label>Auto No. 2 <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+        <input type="text" id="fAuto2" placeholder="if a second vehicle" value="${pv&&pv.autoNo2?esc(pv.autoNo2):''}" autocapitalize="characters">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Date Paid</label>
+        <input type="date" id="fDate" value="${todayISO()}">
+      </div>
+      <div class="field">
+        <label>Year</label>
+        <input type="number" id="fYear" value="${state.year}" min="2000" max="2100">
+      </div>
+    </div>
+    <div class="field">
+      <label>Amount (per month)</label>
+      <input type="number" id="fAmount" placeholder="e.g. 500" value="" min="0">
+    </div>
+    <div class="field">
+      <label>Month(s) covered — select more if paying for multiple months at once</label>
+      <div class="monthgrid" id="monthGrid">${monthChecks}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Cancel</button>
+      <button class="btn primary" data-action="submit-add">Save Entry</button>
+    </div>
+  `);
+}
+
+function openEditModal(paymentId){
+  const p = data.payments.find(p=>p.id===paymentId);
+  if(!p) return;
+  const v = getVehicle(p.vehicleId);
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Edit Entry</h2>
+    <div class="hint">${esc(v.name)} · ${esc(v.autoNo)} · ${MONTHS[p.month-1]} ${p.year}</div>
+    <div class="row2">
+      <div class="field">
+        <label>Date Paid</label>
+        <input type="date" id="eDate" value="${p.date}">
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="number" id="eAmount" value="${p.amount}" min="0">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" data-action="delete-payment" data-id="${p.id}">Delete</button>
+      <button class="btn ghost" data-action="download-receipt" data-id="${p.id}">⬇ Receipt</button>
+      <button class="btn primary" data-action="submit-edit" data-id="${p.id}">Save</button>
+    </div>
+  `);
+}
+
+function openMonthPayModal(vehicleId, year, month){
+  const v = getVehicle(vehicleId);
+  if(!v) return;
+  const due = getDue(vehicleId, year, month);
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Mark as Paid</h2>
+    <div class="hint">${esc(v.name)} · ${esc(v.autoNo)} · ${MONTHS[month-1]} ${year}</div>
+    <div class="row2">
+      <div class="field">
+        <label>Date Paid</label>
+        <input type="date" id="payDate" value="${todayISO()}">
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="number" id="payAmount" min="0" value="${due || ''}" placeholder="0">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Cancel</button>
+      <button class="btn primary" data-action="submit-month-pay" data-vid="${vehicleId}" data-year="${year}" data-month="${month}">Save</button>
+    </div>
+  `);
+}
+
+function openDueModal(vehicleId, year, month){
+  const v = getVehicle(vehicleId);
+  if(!v) return;
+  const due = getDue(vehicleId, year, month);
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Set Amount</h2>
+    <div class="hint">${esc(v.name)} · ${esc(v.autoNo)} · ${MONTHS[month-1]} ${year} — the expected amount for this month, used in Unpaid totals until it's paid.</div>
+    <div class="field">
+      <label>Amount</label>
+      <input type="number" id="dueAmount" min="0" value="${due || ''}" placeholder="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Cancel</button>
+      <button class="btn primary" data-action="submit-due" data-vid="${vehicleId}" data-year="${year}" data-month="${month}">Save</button>
+    </div>
+  `);
+}
+
+function openStatModal(type){
+  let title = '', subtitle = '', header = [], rows = '';
+
+  function row(cells){ return `<tr>${cells.join('')}</tr>`; }
+  function td(text, cls){ return `<td${cls?` class="${cls}"`:''}>${text}</td>`; }
+  function vehicleCell(v){
+    return td(`<span data-action="jump-to-vehicle" data-id="${v.id}" style="cursor:pointer; text-decoration:underline; text-decoration-color:var(--border);">${esc(v.name)}</span>`, 'nm');
+  }
+
+  if(type==='overall-paid'){
+    title = `Overall Paid — ${state.year}`;
+    subtitle = `Every payment recorded for ${state.year}, most recent first. Tap a name to open that vehicle.`;
+    header = ['Name','Auto No.','Month','Date Paid','Amount'];
+    const list = data.payments.filter(p=>p.year===state.year).sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    rows = list.map(p=>{
+      const v = getVehicle(p.vehicleId);
+      if(!v) return '';
+      return row([vehicleCell(v), td(esc(v.autoNo)), td(MONTHS[p.month-1]+' '+p.year), td(esc(p.date)), td(fmt(p.amount))]);
+    }).join('');
+  } else if(type==='overall-unpaid'){
+    title = `Overall Unpaid — ${state.year}`;
+    subtitle = 'Vehicles with elapsed months still unpaid, based on amounts you\'ve set. Tap a name to open that vehicle.';
+    header = ['Name','Auto No.','Unpaid Amount'];
+    const list = data.vehicles.map(v=>({v, amt: vehicleUnpaidForYear(v.id, state.year)})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
+    rows = list.map(({v,amt})=> row([vehicleCell(v), td(esc(v.autoNo)), td(fmt(amt))])).join('');
+  } else if(type==='month-paid'){
+    title = `${MONTHS[CURRENT_MONTH-1]} ${state.year} — Paid`;
+    subtitle = 'Vehicles that have paid for the current month. Tap a name to open that vehicle.';
+    header = ['Name','Auto No.','Date Paid','Amount'];
+    const list = data.vehicles.map(v=>({v, p: paymentFor(v.id, state.year, CURRENT_MONTH)})).filter(x=>x.p);
+    rows = list.map(({v,p})=> row([vehicleCell(v), td(esc(v.autoNo)), td(esc(p.date)), td(fmt(p.amount))])).join('');
+  } else if(type==='month-unpaid'){
+    title = `${MONTHS[CURRENT_MONTH-1]} ${state.year} — Unpaid`;
+    subtitle = 'Vehicles that haven\'t paid for the current month yet. Tap a name to open that vehicle.';
+    header = ['Name','Auto No.','Amount Due'];
+    const list = data.vehicles.filter(v=>!paymentFor(v.id, state.year, CURRENT_MONTH));
+    rows = list.map(v=> row([vehicleCell(v), td(esc(v.autoNo)), td(fmt(getDue(v.id, state.year, CURRENT_MONTH)))])).join('');
+  }
+
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>${title}</h2>
+    <div class="hint">${subtitle}</div>
+    ${rows ? `<div class="report-table-wrap"><table class="rep">
+      <thead><tr>${header.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>` : `<div class="empty"><div class="big">▤</div>Nothing to show here yet.</div>`}
+  `);
+}
+
+function openConfirm(message, actionAttrs){
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Are you sure?</h2>
+    <div class="hint" style="font-size:14px; color:var(--ink);">${message}</div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Cancel</button>
+      <button class="btn danger" ${actionAttrs}>Yes, Delete</button>
+    </div>
+  `);
+}
+
+/* ---------------- Event wiring ---------------- */
+function wireDynamicHandlers(){
+  // live auto-no formatting: force caps, strip special characters as the user types
+  ['fAuto','fAuto2'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el._autoWired){
+      el._autoWired = true;
+      el.addEventListener('input', ()=>{
+        const pos = el.selectionStart;
+        const before = el.value.length;
+        el.value = cleanAutoNo(el.value);
+        const after = el.value.length;
+        const newPos = Math.max(0, pos - (before-after));
+        el.setSelectionRange(newPos, newPos);
+      });
+    }
+  });
+  // vehicle tab filters
+  const sName = document.getElementById('searchName');
+  if(sName) sName.oninput = ()=>{ state.searchName = sName.value; renderVehicleListSection(); };
+  const sAuto = document.getElementById('searchAuto');
+  if(sAuto) sAuto.oninput = ()=>{ state.searchAuto = sAuto.value; renderVehicleListSection(); };
+  const fMonth = document.getElementById('filterMonth');
+  if(fMonth) fMonth.onchange = ()=>{ state.vFilterMonth = Number(fMonth.value); renderVehicleListSection(); };
+  document.querySelectorAll('[data-status]').forEach(b=> b.onclick = ()=>{
+    state.vFilterStatus = b.dataset.status;
+    document.querySelectorAll('[data-status]').forEach(x=>{
+      x.classList.remove('active','all','paidbtn','unpaidbtn');
+      if(x===b) x.classList.add('active', b.dataset.status==='all'?'all':b.dataset.status==='paid'?'paidbtn':'unpaidbtn');
+    });
+    renderVehicleListSection();
+  });
+
+  // report subtabs
+  document.querySelectorAll('[data-rtab]').forEach(b=> b.onclick = ()=>{ state.reportTab = b.dataset.rtab; render(); });
+  const repVSel = document.getElementById('reportVehicleSel');
+  if(repVSel) repVSel.onchange = ()=>{ state.reportVehicleId = repVSel.value; render(); };
+  const repMSel = document.getElementById('reportMonthSel');
+  if(repMSel) repMSel.onchange = ()=>{ state.reportMonth = Number(repMSel.value); render(); };
+
+  // generic data-action clicks
+  document.querySelectorAll('[data-action]').forEach(el=>{
+    el.onclick = (e)=>{
+      e.stopPropagation();
+      const action = el.dataset.action;
+      if(action==='toggle-expand'){
+        const id = el.dataset.id;
+        state.expanded = state.expanded===id ? null : id;
+        render();
+      } else if(action==='show-stat'){
+        openStatModal(el.dataset.type);
+      } else if(action==='jump-to-vehicle'){
+        state.tab = 'vehicles';
+        state.expanded = el.dataset.id;
+        closeModal();
+        render();
+      } else if(action==='open-month-detail'){
+        const vid = el.dataset.vid, year = Number(el.dataset.year), month = Number(el.dataset.month);
+        const existing = paymentFor(vid, year, month);
+        if(existing){ openEditModal(existing.id); } else { openDueModal(vid, year, month); }
+      } else if(action==='toggle-month'){
+        const vid = el.dataset.vid, year = Number(el.dataset.year), month = Number(el.dataset.month);
+        if(paymentFor(vid, year, month)){ markUnpaid(vid, year, month); }
+        else { openMonthPayModal(vid, year, month); }
+      } else if(action==='set-due'){
+        openDueModal(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month));
+      } else if(action==='submit-due'){
+        const amt = Number(document.getElementById('dueAmount').value)||0;
+        setDue(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt);
+        closeModal();
+      } else if(action==='submit-month-pay'){
+        const amt = Number(document.getElementById('payAmount').value)||0;
+        const dt = document.getElementById('payDate').value || todayISO();
+        markPaid(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt, dt);
+        closeModal();
+      } else if(action==='edit-payment'){
+        openEditModal(el.dataset.id);
+      } else if(action==='quick-delete-payment'){
+        deletePayment(el.dataset.id);
+      } else if(action==='delete-payment'){
+        openConfirm('This entry will be permanently deleted.', `data-action="do-delete-payment" data-id="${el.dataset.id}"`);
+      } else if(action==='do-delete-payment'){
+        deletePayment(el.dataset.id); closeModal();
+      } else if(action==='delete-vehicle'){
+        const v = getVehicle(el.dataset.id);
+        openConfirm(`All entries for <b>${esc(v.name)} (${esc(v.autoNo)})</b> will be permanently deleted.`, `data-action="do-delete-vehicle" data-id="${el.dataset.id}"`);
+      } else if(action==='do-delete-vehicle'){
+        deleteVehicle(el.dataset.id); closeModal(); state.expanded=null;
+      } else if(action==='download-receipt'){
+        downloadReceipt(el.dataset.id);
+      } else if(action==='download-overall-report'){
+        downloadOverallReport();
+      } else if(action==='download-monthly-report'){
+        downloadMonthlyReport();
+      } else if(action==='download-individual-report'){
+        downloadIndividualReport();
+      } else if(action==='quick-add'){
+        openAddModal(el.dataset.id);
+      } else if(action==='mark-paid-now'){
+        openMonthPayModal(el.dataset.id, state.year, CURRENT_MONTH);
+      } else if(action==='close-modal'){
+        closeModal();
+      } else if(action==='submit-add'){
+        submitAdd();
+      } else if(action==='submit-edit'){
+        submitEdit(el.dataset.id);
+      }
+    };
+  });
+}
+
+function submitAdd(){
+  const name = document.getElementById('fName').value.trim();
+  const autoNo = cleanAutoNo(document.getElementById('fAuto').value);
+  const autoNo2 = cleanAutoNo(document.getElementById('fAuto2').value);
+  const vehicleType = document.getElementById('fType').value;
+  const date = document.getElementById('fDate').value || todayISO();
+  const year = Number(document.getElementById('fYear').value) || state.year;
+  const amount = Number(document.getElementById('fAmount').value) || 0;
+  const months = [...document.querySelectorAll('#monthGrid input:checked')].map(c=>Number(c.value));
+
+  if(!name || !autoNo){ showToast('Name and Auto No. are required'); return; }
+  if(months.length===0){ showToast('Select at least one month'); return; }
+
+  addEntry({name, autoNo, autoNo2, vehicleType, date, year, months, amount});
+  closeModal();
+}
+function submitEdit(paymentId){
+  const amount = Number(document.getElementById('eAmount').value)||0;
+  const date = document.getElementById('eDate').value || todayISO();
+  editPayment(paymentId, amount, date);
+  closeModal();
+}
+
+document.getElementById('fabAdd').onclick = ()=> openAddModal(null);
+document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+
+/* ---------------- Init ---------------- */
+(async function init(){
+  await loadData();
+  render();
+})();
+</script>
+</body>
+</html>

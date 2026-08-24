@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Parking Management</title>
+<title>Bolinj Masjid Trust Parking</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -140,6 +140,26 @@
   }
   .mstub:hover{ border-color:var(--ink); }
   .mstub-main{ display:flex; flex-direction:column; min-width:52px; }
+  .due-badge{ font-size:10px; font-weight:600; margin-top:2px; white-space:nowrap; }
+  .due-ontrack{ color:var(--paid); }
+  .due-soon{ color:#B8791A; }
+  .due-overdue{ color:var(--unpaid); }
+  .notif-bell{ position:relative; background:none; border:none; color:#fff; font-size:19px; cursor:pointer; padding:4px 6px; }
+  .notif-bell.has-alerts{ animation: bell-ring 1.8s ease-in-out infinite; transform-origin:50% 0%; }
+  @keyframes bell-ring{
+    0%, 60%, 100% { transform: rotate(0deg); }
+    5% { transform: rotate(14deg); }
+    10% { transform: rotate(-12deg); }
+    15% { transform: rotate(9deg); }
+    20% { transform: rotate(-7deg); }
+    25% { transform: rotate(4deg); }
+    30% { transform: rotate(0deg); }
+  }
+  .notif-dot{ position:absolute; top:0px; right:0px; background:var(--unpaid); color:#fff; font-size:10px; font-weight:700; border-radius:10px; min-width:16px; height:16px; display:flex; align-items:center; justify-content:center; padding:0 3px; animation: notif-pulse 1.8s ease-in-out infinite; }
+  @keyframes notif-pulse{
+    0%, 60%, 100% { box-shadow: 0 0 0 0 rgba(178,58,46,0.5); }
+    30% { box-shadow: 0 0 0 5px rgba(178,58,46,0); }
+  }
   .mstub .mn{ font-family:'Poppins'; font-weight:700; font-size:14px; text-transform:uppercase; }
   .mstub .amt{ font-family:'IBM Plex Mono'; font-size:12px; color:var(--muted); }
   .mstub button.toggle{
@@ -389,6 +409,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -397,10 +418,16 @@
     <div class="brand">
       <div class="badge">P</div>
       <div>
-        <h1>Parking Management</h1>
+        <h1>Bolinj Masjid Trust Parking</h1>
+        <p>Parking Management</p>
       </div>
     </div>
-    <select class="yearpick" id="globalYear"></select>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button class="notif-bell" id="notifBell" data-action="show-notif-panel" title="Due / Overdue alerts">
+        🔔<span class="notif-dot" id="notifDot" style="display:none;"></span>
+      </button>
+      <select class="yearpick" id="globalYear"></select>
+    </div>
   </div>
 </header>
 
@@ -460,6 +487,17 @@ function normalizeData(raw){
   if(!Array.isArray(raw.vehicles)) raw.vehicles = [];
   if(!Array.isArray(raw.payments)) raw.payments = [];
   if(!Array.isArray(raw.dues)) raw.dues = [];
+  if(!raw.settings || typeof raw.settings !== 'object') raw.settings = {};
+  if(typeof raw.settings.dueSoonDays !== 'number') raw.settings.dueSoonDays = 3;
+  if(typeof raw.settings.autoBackupEnabled !== 'boolean') raw.settings.autoBackupEnabled = false;
+  if(typeof raw.settings.browserNotifEnabled !== 'boolean') raw.settings.browserNotifEnabled = false;
+  if(!raw.settings.lastBackupDate) raw.settings.lastBackupDate = null;
+  raw.vehicles.forEach(v=>{
+    if(v.mobile==null) v.mobile = '';
+    if(v.remarks==null) v.remarks = '';
+    if(v.dueDay==null) v.dueDay = null;
+  });
+  raw.payments.forEach(p=>{ if(!p.mode) p.mode = 'Cash'; });
   return raw;
 }
 
@@ -530,14 +568,244 @@ async function saveData(){
 
 function getVehicle(id){ return data.vehicles.find(v=>v.id===id); }
 function cleanAutoNo(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function cleanMobile(s){ return String(s||'').replace(/[^0-9]/g,'').slice(0,10); }
 const VEHICLE_TYPES = ['Auto','Car','Bike','Bus','Truck','Other'];
-function findOrCreateVehicle(name, autoNo, autoNo2, vehicleType){
+const PAYMENT_MODES = ['Cash','GPay','PhonePe','Other'];
+function findOrCreateVehicle(name, autoNo, autoNo2, vehicleType, mobile, remarks, dueDay){
   name = name.trim(); autoNo = cleanAutoNo(autoNo); autoNo2 = cleanAutoNo(autoNo2);
   vehicleType = vehicleType || 'Auto';
+  mobile = cleanMobile(mobile);
+  dueDay = dueDay ? Math.min(28, Math.max(1, Number(dueDay))) : null;
   let v = data.vehicles.find(v => v.name.toLowerCase()===name.toLowerCase() && v.autoNo.toUpperCase()===autoNo);
-  if(!v){ v = {id: uid('veh'), name, autoNo, autoNo2, vehicleType}; data.vehicles.push(v); }
-  else { v.name = name; v.autoNo = autoNo; v.autoNo2 = autoNo2 || v.autoNo2 || ''; v.vehicleType = vehicleType || v.vehicleType || 'Auto'; }
+  if(!v){ v = {id: uid('veh'), name, autoNo, autoNo2, vehicleType, mobile, remarks: remarks||'', dueDay}; data.vehicles.push(v); }
+  else {
+    v.name = name; v.autoNo = autoNo; v.autoNo2 = autoNo2 || v.autoNo2 || ''; v.vehicleType = vehicleType || v.vehicleType || 'Auto';
+    if(mobile) v.mobile = mobile;
+    if(remarks) v.remarks = remarks;
+    if(dueDay) v.dueDay = dueDay;
+  }
   return v;
+}
+function updateVehicleDetails(vehicleId, {name, autoNo, autoNo2, vehicleType, mobile, remarks, dueDay}){
+  const v = getVehicle(vehicleId);
+  if(!v) return;
+  if(name) v.name = name.trim();
+  if(autoNo) v.autoNo = cleanAutoNo(autoNo);
+  v.autoNo2 = cleanAutoNo(autoNo2);
+  v.vehicleType = vehicleType || v.vehicleType || 'Auto';
+  v.mobile = cleanMobile(mobile);
+  v.remarks = (remarks||'').trim();
+  v.dueDay = dueDay ? Math.min(28, Math.max(1, Number(dueDay))) : null;
+  saveData(); render(); showToast('Vehicle details updated');
+}
+/* Due/overdue status for an unpaid month. Only meaningful when BOTH an amount (>0) and an
+   explicit due date have been set for that specific month — no amount or no due date means
+   there's nothing to track, so this stays silent rather than guessing. */
+function dueStatus(vehicleId, year, month){
+  if(paymentFor(vehicleId, year, month)) return null;
+  const amt = getDue(vehicleId, year, month);
+  if(!amt || amt<=0) return null;
+  const dueDateStr = getDueDate(vehicleId, year, month);
+  if(!dueDateStr) return null;
+  const dueDate = new Date(dueDateStr+'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const soonDays = (data.settings && data.settings.dueSoonDays) || 3;
+  const diffDays = Math.round((dueDate - today)/86400000);
+  if(diffDays < 0) return 'overdue';
+  if(diffDays <= soonDays) return 'soon';
+  return 'ontrack';
+}
+function dueStatusLabel(status){
+  return status==='overdue' ? '🔴 Overdue' : status==='soon' ? '🟠 Due Soon' : status==='ontrack' ? '🟢 Due' : '';
+}
+/* Collects every (vehicle, month) currently overdue or due-soon, for the notification bell/panel. */
+function collectDueAlerts(){
+  const alerts = [];
+  data.vehicles.forEach(v=>{
+    for(let m=1;m<=12;m++){
+      const status = dueStatus(v.id, state.year, m);
+      if(status==='overdue' || status==='soon'){
+        alerts.push({vehicle:v, month:m, year:state.year, status});
+      }
+    }
+  });
+  alerts.sort((a,b)=> a.status===b.status ? 0 : a.status==='overdue' ? -1 : 1);
+  return alerts;
+}
+
+function renderNotifBell(){
+  const dot = document.getElementById('notifDot');
+  const bell = document.getElementById('notifBell');
+  if(!dot || !bell) return;
+  const alerts = collectDueAlerts();
+  const overdueCount = alerts.filter(a=>a.status==='overdue').length;
+  const total = alerts.length;
+  if(total>0){
+    dot.style.display = 'flex';
+    dot.textContent = total>99?'99+':total;
+    dot.style.background = overdueCount>0 ? 'var(--unpaid)' : '#B8791A';
+    bell.classList.add('has-alerts');
+  } else {
+    dot.style.display = 'none';
+    bell.classList.remove('has-alerts');
+  }
+}
+
+function openNotifPanel(){
+  const alerts = collectDueAlerts();
+  const rows = alerts.map(a=>{
+    const dueAmt = getDue(a.vehicle.id, a.year, a.month);
+    const dueDateStr = getDueDate(a.vehicle.id, a.year, a.month);
+    return `
+    <tr>
+      <td class="nm"><span data-action="jump-to-vehicle" data-id="${a.vehicle.id}" style="cursor:pointer; text-decoration:underline; text-decoration-color:var(--border);">${esc(a.vehicle.name)}</span></td>
+      <td>${a.vehicle.mobile ? '📞 '+esc(a.vehicle.mobile) : '—'}</td>
+      <td>${MONTHS[a.month-1]} ${a.year}</td>
+      <td>${fmt(dueAmt)}</td>
+      <td>${dueDateStr ? esc(dueDateStr) : '—'}</td>
+      <td><span class="due-badge due-${a.status}">${dueStatusLabel(a.status)}</span></td>
+    </tr>
+  `;
+  }).join('');
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>🔔 Due &amp; Overdue</h2>
+    <div class="hint">Months with both an amount and a due date set, for ${state.year}. Tap ✎ on any unpaid month to set or edit these.</div>
+    ${alerts.length===0
+      ? `<div class="empty"><div class="big">✓</div>Nothing overdue or due soon right now.</div>`
+      : `<div class="report-table-wrap"><table class="rep">
+          <thead><tr><th>Name</th><th>Mobile</th><th>Month</th><th>Amount</th><th>Due Date</th><th>Status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`}
+  `);
+}
+
+/* Best-effort browser notification, only while this tab is open — there is no backend/service
+   worker here, so this cannot push notifications when the site itself is closed. */
+function maybeFireBrowserNotification(){
+  if(!data.settings || !data.settings.browserNotifEnabled) return;
+  if(!('Notification' in window)) return;
+  if(Notification.permission !== 'granted') return;
+  const alerts = collectDueAlerts();
+  if(alerts.length===0) return;
+  const overdue = alerts.filter(a=>a.status==='overdue').length;
+  const soon = alerts.length - overdue;
+  const parts = [];
+  if(overdue) parts.push(overdue+' overdue');
+  if(soon) parts.push(soon+' due soon');
+  try{
+    new Notification('Bolinj Masjid Trust Parking', { body: parts.join(', ') + ' — open the app to review.' });
+  }catch(e){ console.warn('Notification failed:', e); }
+}
+
+/* ---------------- Backup / Export / Import ---------------- */
+const BACKUP_PREFIX = 'bolinj-masjid-trust-parking-backup-';
+function listLocalBackups(){
+  const keys = [];
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(BACKUP_PREFIX)) keys.push(k);
+  }
+  return keys.sort().reverse();
+}
+function pruneOldBackups(keep){
+  listLocalBackups().slice(keep).forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+}
+function snapshotBackup(){
+  const dateKey = todayISO();
+  try{
+    localStorage.setItem(BACKUP_PREFIX+dateKey, JSON.stringify(normalizeData(data)));
+    data.settings.lastBackupDate = dateKey;
+    pruneOldBackups(14);
+  }catch(e){ console.warn('Backup snapshot failed:', e); }
+}
+function maybeAutoBackupOnLoad(){
+  if(!data.settings || !data.settings.autoBackupEnabled) return;
+  if(data.settings.lastBackupDate !== todayISO()){
+    snapshotBackup();
+    saveData();
+  }
+}
+function restoreBackup(key){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw){ showToast('Backup not found'); return; }
+    data = normalizeData(JSON.parse(raw));
+    saveData(); render(); showToast('Backup restored');
+  }catch(e){ showToast('Could not restore that backup'); }
+}
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+function exportJSON(){
+  downloadFile(`Parking_Backup_${todayISO()}.json`, JSON.stringify(normalizeData(data), null, 2), 'application/json');
+  data.settings.lastBackupDate = todayISO();
+  saveData(); render();
+  showToast('Backup downloaded');
+}
+function paymentsFlatRows(){
+  return data.payments
+    .slice()
+    .sort((a,b)=> (a.date||'').localeCompare(b.date||''))
+    .map(p=>{
+      const v = getVehicle(p.vehicleId) || {};
+      return {
+        Name: v.name||'', Type: v.vehicleType||'', 'Auto No': v.autoNo||'', 'Auto No 2': v.autoNo2||'',
+        Mobile: v.mobile||'', Month: MONTHS[p.month-1], Year: p.year, Amount: p.amount,
+        Date: p.date, Mode: p.mode||'Cash', Remarks: v.remarks||''
+      };
+    });
+}
+function exportCSV(){
+  const rows = paymentsFlatRows();
+  if(rows.length===0){ showToast('No payments to export yet'); return; }
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join(',')].concat(rows.map(r=> headers.map(h=>{
+    let val = String(r[h]==null?'':r[h]);
+    if(val.includes(',')||val.includes('"')||val.includes('\n')) val = '"'+val.replace(/"/g,'""')+'"';
+    return val;
+  }).join(',')));
+  downloadFile(`Parking_Payments_${todayISO()}.csv`, lines.join('\n'), 'text/csv');
+  showToast('CSV downloaded');
+}
+function exportExcel(){
+  if(!window.XLSX){ showToast('Excel tool still loading — try again in a moment'); return; }
+  const rows = paymentsFlatRows();
+  if(rows.length===0){ showToast('No payments to export yet'); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Payments');
+  const vRows = data.vehicles.map(v=>({
+    Name: v.name, Type: v.vehicleType, 'Auto No': v.autoNo, 'Auto No 2': v.autoNo2||'',
+    Mobile: v.mobile||'', 'Default Due Day': v.dueDay||'', Remarks: v.remarks||''
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vRows), 'Vehicles');
+  XLSX.writeFile(wb, `Parking_Export_${todayISO()}.xlsx`);
+  showToast('Excel file downloaded');
+}
+function importJSONFile(fileInput){
+  const file = fileInput.files && fileInput.files[0];
+  if(!file) return;
+  if(!confirm('This will replace all data currently on this device with the contents of this backup file. Continue?')){
+    fileInput.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      data = normalizeData(JSON.parse(e.target.result));
+      saveData(); render();
+      showToast('Data restored from backup file');
+    }catch(err){
+      showToast('That file could not be read as a backup');
+    }
+    fileInput.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function paymentFor(vehicleId, year, month){
@@ -561,10 +829,16 @@ function getDue(vehicleId, year, month){
   const d = data.dues.find(x=>x.vehicleId===vehicleId && x.year===year && x.month===month);
   return d ? Number(d.amount) : 0;
 }
-function setDue(vehicleId, year, month, amount){
+/* Manually-set "due date" for a month — only present once the user sets one; used only to
+   drive the Due/Due Soon/Overdue badge, never assumed automatically. */
+function getDueDate(vehicleId, year, month){
+  const d = data.dues.find(x=>x.vehicleId===vehicleId && x.year===year && x.month===month);
+  return d && d.dueDate ? d.dueDate : null;
+}
+function setDue(vehicleId, year, month, amount, dueDate){
   data.dues = data.dues.filter(x=>!(x.vehicleId===vehicleId && x.year===year && x.month===month));
   if(Number(amount) > 0){
-    data.dues.push({id: uid('due'), vehicleId, year, month, amount: Number(amount)});
+    data.dues.push({id: uid('due'), vehicleId, year, month, amount: Number(amount), dueDate: dueDate||null});
   }
   saveData(); render(); showToast('Amount updated');
 }
@@ -579,11 +853,11 @@ function vehiclePaidForYear(vehicleId, year){
   return data.payments.filter(p=>p.vehicleId===vehicleId && p.year===year).reduce((s,p)=>s+Number(p.amount||0),0);
 }
 
-function addEntry({name, autoNo, autoNo2, vehicleType, date, year, months, amount}){
-  const v = findOrCreateVehicle(name, autoNo, autoNo2, vehicleType);
+function addEntry({name, autoNo, autoNo2, vehicleType, mobile, remarks, dueDay, date, year, months, amount, mode}){
+  const v = findOrCreateVehicle(name, autoNo, autoNo2, vehicleType, mobile, remarks, dueDay);
   months.forEach(m=>{
     data.payments = data.payments.filter(p=>!(p.vehicleId===v.id && p.year===year && p.month===m));
-    data.payments.push({id: uid('pay'), vehicleId: v.id, year, month: m, amount: Number(amount), date});
+    data.payments.push({id: uid('pay'), vehicleId: v.id, year, month: m, amount: Number(amount), date, mode: mode||'Cash'});
   });
   saveData();
   render();
@@ -596,15 +870,15 @@ function markUnpaid(vehicleId, year, month){
   saveData(); render();
   showToast(MONTHS[month-1]+' '+year+' marked unpaid');
 }
-function markPaid(vehicleId, year, month, amount, date){
+function markPaid(vehicleId, year, month, amount, date, mode){
   data.payments = data.payments.filter(p=>!(p.vehicleId===vehicleId && p.year===year && p.month===month));
-  data.payments.push({id: uid('pay'), vehicleId, year, month, amount: Number(amount)||0, date: date||todayISO()});
+  data.payments.push({id: uid('pay'), vehicleId, year, month, amount: Number(amount)||0, date: date||todayISO(), mode: mode||'Cash'});
   saveData(); render();
   showToast(MONTHS[month-1]+' '+year+' marked paid');
 }
-function editPayment(paymentId, amount, date){
+function editPayment(paymentId, amount, date, mode){
   const p = data.payments.find(p=>p.id===paymentId);
-  if(p){ p.amount = Number(amount); p.date = date; saveData(); render(); showToast('Entry updated'); }
+  if(p){ p.amount = Number(amount); p.date = date; p.mode = mode||p.mode||'Cash'; saveData(); render(); showToast('Entry updated'); }
 }
 function deletePayment(paymentId){
   data.payments = data.payments.filter(p=>p.id!==paymentId);
@@ -635,7 +909,7 @@ function downloadReceipt(paymentId){
   doc.setTextColor(198,161,91);
   doc.setFont('helvetica','bold');
   doc.setFontSize(13);
-  doc.text('PARKING Management', W/2, 9, {align:'center'});
+  doc.text('BOLINJ MASJID TRUST PARKING', W/2, 9, {align:'center'});
   doc.setTextColor(255,255,255);
   doc.setFontSize(7.5);
   doc.setFont('helvetica','normal');
@@ -701,6 +975,7 @@ function downloadReceipt(paymentId){
   y+=20;
   doc.setFont('helvetica','bold'); doc.setFontSize(10);
   doc.setTextColor(21,48,41);
+  doc.text('BOLINJ MASJID TRUST', W/2, y, {align:'center'});
   y+=8;
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
   doc.text('Thank you!', W/2, y, {align:'center'});
@@ -726,7 +1001,7 @@ function downloadOverallReport(){
     doc.rect(0,0,W,22,'F');
     doc.setTextColor(198,161,91);
     doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text('PARKING MANAGEMENT', marginX, 10);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     doc.text(`Overall Report — ${year}`, marginX, 17);
@@ -782,7 +1057,7 @@ function downloadOverallReport(){
 
     const paidYear = vehiclePaidForYear(v.id, year);
     const unpaidYear = vehicleUnpaidForYear(v.id, year);
-    grandPaid += vehicleAllTimePaid(v.id);
+    grandPaid += paidYear;
     grandUnpaid += unpaidYear;
 
     doc.setFont('helvetica','bold'); doc.setFontSize(9);
@@ -803,7 +1078,7 @@ function downloadOverallReport(){
   y += 8;
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
   doc.setTextColor(31,122,92);
-  doc.text('Overall Paid (all-time): ' + fmtPdf(grandPaid), marginX, y);
+  doc.text('Overall Paid (' + year + '): ' + fmtPdf(grandPaid), marginX, y);
   y += 7;
   doc.setTextColor(178,58,46);
   doc.text('Overall Unpaid (' + year + '): ' + fmtPdf(grandUnpaid), marginX, y);
@@ -827,7 +1102,7 @@ function downloadMonthlyReport(){
     doc.rect(0,0,W,22,'F');
     doc.setTextColor(198,161,91);
     doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text('PARKING MANAGEMENT', marginX, 10);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     doc.text(`Monthly Report — ${MONTHS[month-1]} ${year}`, marginX, 17);
@@ -908,7 +1183,7 @@ function downloadIndividualReport(){
     doc.rect(0,0,W,22,'F');
     doc.setTextColor(198,161,91);
     doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text('PARKING MANAGEMENT', marginX, 10);
+    doc.text('BOLINJ MASJID TRUST PARKING', marginX, 10);
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     doc.text(`Individual Report — ${year}`, marginX, 17);
@@ -983,6 +1258,108 @@ function downloadIndividualReport(){
   showToast('Report downloaded');
 }
 
+/* ---------------- View Report (on-screen preview, no download needed) ---------------- */
+function viewOverallReport(){
+  const year = state.reportYear;
+  const sorted = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name));
+  if(sorted.length===0){ showToast('No vehicles to show yet'); return; }
+  let grandPaid = 0, grandUnpaid = 0;
+  const blocks = sorted.map(v=>{
+    const yearPayments = vehiclePaymentsForYear(v.id, year);
+    const paidYear = vehiclePaidForYear(v.id, year);
+    const unpaidYear = vehicleUnpaidForYear(v.id, year);
+    grandPaid += paidYear; grandUnpaid += unpaidYear;
+    const monthCells = MONTHS.map((m,i)=>{
+      const month=i+1; const p = yearPayments[month];
+      const status = p ? null : dueStatus(v.id, year, month);
+      return `<div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--border); font-size:12.5px;">
+        <span>${m}</span>
+        <span style="color:${p?'var(--paid)':'var(--unpaid)'}; font-weight:600;">${p?'Paid':'Unpaid'}${status?' '+dueStatusLabel(status).split(' ')[0]:''} ${fmt(p?p.amount:getDue(v.id,year,month))}</span>
+      </div>`;
+    }).join('');
+    return `
+      <div style="border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
+          <div><b>${esc(v.name)}</b> <span style="color:var(--muted); font-size:12.5px;">— ${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' / '+esc(v.autoNo2):''}</span></div>
+          <div style="font-size:12.5px;"><span style="color:var(--paid); font-weight:600;">Paid ${fmt(paidYear)}</span> &nbsp; <span style="color:var(--unpaid); font-weight:600;">Unpaid ${fmt(unpaidYear)}</span></div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0 16px; margin-top:8px;">${monthCells}</div>
+      </div>
+    `;
+  }).join('');
+
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Overall Report — ${year}</h2>
+    <div class="hint">Every vehicle with an entry, every month. Grand total: <b style="color:var(--paid);">Paid ${fmt(grandPaid)}</b> &nbsp; <b style="color:var(--unpaid);">Unpaid ${fmt(grandUnpaid)}</b></div>
+    <div style="margin-top:12px; max-height:60vh; overflow-y:auto;">${blocks}</div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Close</button>
+      <button class="btn primary" data-action="download-overall-report">⬇ Download PDF</button>
+    </div>
+  `);
+}
+
+function viewMonthlyReport(){
+  const year = state.reportYear, month = state.reportMonth;
+  if(data.vehicles.length===0){ showToast('No vehicles to show yet'); return; }
+  const sorted = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name));
+  const rows = sorted.map(v=>{
+    const p = paymentFor(v.id, year, month);
+    const status = p ? null : dueStatus(v.id, year, month);
+    return `<tr>
+      <td class="nm">${esc(v.name)}</td>
+      <td>${esc(v.autoNo)}</td>
+      <td>${p?`<span class="badge-tag paid">Paid</span>`:`<span class="badge-tag unpaid">Unpaid</span>`}${status?`<br><span class="due-badge due-${status}">${dueStatusLabel(status)}</span>`:''}</td>
+      <td>${fmt(p?p.amount:getDue(v.id,year,month))}</td>
+      <td>${p?esc(p.mode||'Cash'):'—'}</td>
+    </tr>`;
+  }).join('');
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Monthly Report — ${MONTHS[month-1]} ${year}</h2>
+    <div style="margin-top:10px; max-height:62vh; overflow-y:auto;" class="report-table-wrap"><table class="rep">
+      <thead><tr><th>Name</th><th>Auto No.</th><th>Status</th><th>Amount</th><th>Mode</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Close</button>
+      <button class="btn primary" data-action="download-monthly-report">⬇ Download PDF</button>
+    </div>
+  `);
+}
+
+function viewIndividualReport(){
+  const v = getVehicle(state.reportVehicleId);
+  if(!v){ showToast('Select a vehicle first'); return; }
+  const year = state.reportYear;
+  const yearPayments = vehiclePaymentsForYear(v.id, year);
+  const rows = MONTHS.map((m,i)=>{
+    const month=i+1; const p = yearPayments[month];
+    const status = p ? null : dueStatus(v.id, year, month);
+    return `<tr>
+      <td class="nm">${m} ${year}</td>
+      <td>${p?`<span class="badge-tag paid">Paid</span>`:`<span class="badge-tag unpaid">Unpaid</span>`}${status?`<br><span class="due-badge due-${status}">${dueStatusLabel(status)}</span>`:''}</td>
+      <td>${fmt(p?p.amount:getDue(v.id,year,month))}</td>
+      <td>${p?esc(p.date):'—'}</td>
+      <td>${p?esc(p.mode||'Cash'):'—'}</td>
+    </tr>`;
+  }).join('');
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>${esc(v.name)} — ${year}</h2>
+    <div class="hint">${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' / '+esc(v.autoNo2):''}${v.mobile?' · 📞 '+esc(v.mobile):''}${v.remarks?'<br>📝 '+esc(v.remarks):''}</div>
+    <div style="margin-top:10px; max-height:58vh; overflow-y:auto;" class="report-table-wrap"><table class="rep">
+      <thead><tr><th>Month</th><th>Status</th><th>Amount</th><th>Date</th><th>Mode</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Close</button>
+      <button class="btn primary" data-action="download-individual-report">⬇ Download PDF</button>
+    </div>
+  `);
+}
+
 /* ---------------- Toast ---------------- */
 let toastTimer;
 function showToast(msg){
@@ -1026,6 +1403,7 @@ const TABS = [
   {id:'dashboard', label:'Dashboard', icon:'◆'},
   {id:'vehicles', label:'Vehicles', icon:'🚗'},
   {id:'reports', label:'Reports', icon:'▤'},
+  {id:'settings', label:'Settings', icon:'⚙'},
 ];
 function renderTabs(){
   const html = TABS.map(t=>`<button data-tab="${t.id}" class="${state.tab===t.id?'active':''}"><span class="ic">${t.icon}</span>${t.label}</button>`).join('');
@@ -1037,10 +1415,12 @@ function renderTabs(){
 function render(){
   populateYearSelect();
   renderTabs();
+  renderNotifBell();
   const main = document.getElementById('main');
   if(state.tab==='dashboard'){ main.innerHTML = renderDashboard(); }
   else if(state.tab==='vehicles'){ main.innerHTML = renderVehiclesTab(); renderVehicleListSection(); }
-  else { main.innerHTML = renderReportsTab(); }
+  else if(state.tab==='reports'){ main.innerHTML = renderReportsTab(); }
+  else { main.innerHTML = renderSettingsTab(); }
   wireDynamicHandlers();
 }
 
@@ -1146,11 +1526,13 @@ function renderVehicleCard(v){
     const p = yearPayments[month];
     const isPaid = !!p;
     const due = getDue(v.id, state.year, month);
+    const status = isPaid ? null : dueStatus(v.id, state.year, month);
     return `
       <div class="mstub ${isPaid?'paid':'unpaid'}" data-action="open-month-detail" data-vid="${v.id}" data-year="${state.year}" data-month="${month}">
         <div class="mstub-main">
           <span class="mn">${m}</span>
           <span class="amt">${isPaid ? fmt(p.amount) : fmt(due)}</span>
+          ${status ? `<span class="due-badge due-${status}">${dueStatusLabel(status)}</span>` : ''}
         </div>
         <button class="toggle" data-action="toggle-month" data-vid="${v.id}" data-year="${state.year}" data-month="${month}">${isPaid?'Paid ✓':'Unpaid'}</button>
         <div class="mini">
@@ -1172,14 +1554,17 @@ function renderVehicleCard(v){
         <div class="who">
           <div class="name">${esc(v.name)}</div>
           <span class="auto">${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' / '+esc(v.autoNo2):''}</span>
+          ${v.mobile ? `<span class="auto" style="margin-left:6px;">📞 ${esc(v.mobile)}</span>` : ''}
         </div>
         <div class="figs">
           <div class="p">Paid ${fmt(paidYear)}</div>
           <div class="u">Unpaid ${fmt(unpaidYear)}</div>
         </div>
+        <button class="micon" data-action="edit-vehicle" data-id="${v.id}" title="Edit Vehicle Details" style="margin-left:4px;">✎</button>
         <div class="chev">⌄</div>
       </div>
       <div class="body">
+        ${v.remarks ? `<div class="hint" style="margin-bottom:10px;">📝 ${esc(v.remarks)}</div>` : ''}
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:8px;">${state.year} — 12 month ledger · tap a month to edit it, or tap Unpaid to mark it paid</div>
         <div class="months">${monthsHtml}</div>
         <div class="actions">
@@ -1202,29 +1587,97 @@ function renderReportsTab(){
   `;
 }
 
+function renderSettingsTab(){
+  const s = data.settings || {};
+  const backups = listLocalBackups();
+  const notifPermission = ('Notification' in window) ? Notification.permission : 'unsupported';
+  return `
+    <div class="section-title"><h2>Settings</h2></div>
+
+    <div class="vcard" style="padding:16px;">
+      <h3 style="margin:0 0 4px; font-size:17px;">Backup &amp; Restore</h3>
+      <div class="hint">Your data already saves automatically on this device. Use these to keep a copy elsewhere, share with someone, or move to another device/browser.</div>
+      <div class="actions" style="margin-top:12px; flex-wrap:wrap;">
+        <button class="btn primary" data-action="export-json">⬇ Backup as JSON</button>
+        <button class="btn ghost" data-action="export-csv">⬇ Export as CSV</button>
+        <button class="btn ghost" data-action="export-excel">⬇ Export as Excel</button>
+      </div>
+      <div style="margin-top:16px;">
+        <label style="display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:6px;">Restore from a JSON backup file</label>
+        <input type="file" id="importFileInput" accept="application/json">
+        <div class="hint" style="margin-top:6px;">⚠ Restoring replaces all data currently on this device — export a fresh backup first if unsure.</div>
+      </div>
+    </div>
+
+    <div class="vcard" style="padding:16px; margin-top:14px;">
+      <h3 style="margin:0 0 4px; font-size:17px;">Automatic Backup</h3>
+      <div class="hint">When on, a snapshot is saved on this device once a day automatically, so you can recover from an accidental change. This is separate from the downloads above.</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px;">
+        <span style="font-weight:600;">Auto-backup is ${s.autoBackupEnabled?'ON':'OFF'}</span>
+        <button class="btn ${s.autoBackupEnabled?'danger':'primary'} small" data-action="toggle-auto-backup">${s.autoBackupEnabled?'Turn Off':'Turn On'}</button>
+      </div>
+      <div class="hint" style="margin-top:8px;">Last backup: ${s.lastBackupDate ? esc(s.lastBackupDate) : 'never'}</div>
+      ${backups.length>0 ? `
+        <div style="margin-top:12px;">
+          <label style="display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:6px;">Restore a saved snapshot</label>
+          ${backups.slice(0,10).map(k=>`
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-top:1px solid var(--border);">
+              <span class="mono" style="font-size:12.5px;">${esc(k.replace(BACKUP_PREFIX,''))}</span>
+              <button class="btn small ghost" data-action="restore-backup" data-key="${esc(k)}">Restore</button>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="vcard" style="padding:16px; margin-top:14px;">
+      <h3 style="margin:0 0 4px; font-size:17px;">Due / Overdue Alerts</h3>
+      <div class="hint">A month only shows 🟢 Due / 🟠 Due Soon / 🔴 Overdue once it has BOTH an amount set (via ✎ on an unpaid month) AND a due date — set either from that same screen, and edit the due date anytime, e.g. to give someone more time.</div>
+      <div class="field" style="margin-top:12px; max-width:220px;">
+        <label>Due Soon Window (days)</label>
+        <input type="number" id="dueSoonDaysInput" min="1" max="30" value="${s.dueSoonDays||3}">
+      </div>
+      <button class="btn primary small" data-action="save-due-soon-days">Save</button>
+    </div>
+
+    <div class="vcard" style="padding:16px; margin-top:14px;">
+      <h3 style="margin:0 0 4px; font-size:17px;">🔔 Notifications</h3>
+      <div class="hint">The bell icon at the top always shows in-website alerts for due/overdue vehicles. Browser notifications can also pop up on this device while the app is open in a tab — there's no server here, so it can't notify you once the tab or site is fully closed.</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px;">
+        <span style="font-weight:600;">Browser notifications</span>
+        <button class="btn ${s.browserNotifEnabled?'danger':'primary'} small" data-action="toggle-browser-notif">${s.browserNotifEnabled?'Turn Off':'Turn On'}</button>
+      </div>
+      <div class="hint" style="margin-top:8px;">Permission: ${esc(notifPermission)}${notifPermission==='denied'?' — blocked in your browser settings, re-enable it there to use this.':''}</div>
+    </div>
+  `;
+}
+
 function renderOverallReport(){
   const rows = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name)).map(v=>{
-    const paid = vehicleAllTimePaid(v.id);
+    const paid = vehiclePaidForYear(v.id, state.reportYear);
     const unpaid = vehicleUnpaidForYear(v.id, state.reportYear);
     return `<tr>
-      <td class="nm">${esc(v.name)}</td>
+      <td class="nm">${esc(v.name)}${v.mobile?`<br><span style="color:var(--muted); font-size:11px;">📞 ${esc(v.mobile)}</span>`:''}</td>
       <td>${esc(v.vehicleType||'Auto')}</td>
       <td>${esc(v.autoNo)}${v.autoNo2?`<br><span style="color:var(--muted); font-size:11.5px;">${esc(v.autoNo2)}</span>`:''}</td>
       <td>${fmt(paid)}</td>
       <td>${fmt(unpaid)}</td>
     </tr>`;
   }).join('');
-  const totalPaid = data.vehicles.reduce((s,v)=>s+vehicleAllTimePaid(v.id),0);
+  const totalPaid = data.vehicles.reduce((s,v)=>s+vehiclePaidForYear(v.id, state.reportYear),0);
   const totalUnpaid = data.vehicles.reduce((s,v)=>s+vehicleUnpaidForYear(v.id, state.reportYear),0);
 
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap;">
-      <div style="font-size:12.5px; color:var(--muted);">All-time paid totals, with unpaid calculated for <b class="mono">${state.reportYear}</b> (elapsed months).</div>
-      <button class="btn primary small" data-action="download-overall-report">⬇ Download Report</button>
+      <div style="font-size:12.5px; color:var(--muted);">Paid and Unpaid totals for <b class="mono">${state.reportYear}</b> (unpaid based on elapsed months).</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn ghost small" data-action="view-overall-report">👁 View Report</button>
+        <button class="btn primary small" data-action="download-overall-report">⬇ Download Report</button>
+      </div>
     </div>
     ${data.vehicles.length===0 ? `<div class="empty"><div class="big">▤</div>No entries yet.</div>` : `
     <div class="report-table-wrap"><table class="rep">
-      <thead><tr><th>Name</th><th>Type</th><th>Auto No.</th><th>Paid (all-time)</th><th>Unpaid (${state.reportYear})</th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>Auto No.</th><th>Paid (${state.reportYear})</th><th>Unpaid (${state.reportYear})</th></tr></thead>
       <tbody>
         ${rows}
         <tr class="total"><td colspan="3">Grand Total</td><td>${fmt(totalPaid)}</td><td>${fmt(totalUnpaid)}</td></tr>
@@ -1237,11 +1690,13 @@ function renderMonthlyReport(){
   const monthOptions = MONTHS.map((m,i)=>`<option value="${i+1}" ${state.reportMonth===i+1?'selected':''}>${m}</option>`).join('');
   const rows = [...data.vehicles].sort((a,b)=>a.name.localeCompare(b.name)).map(v=>{
     const p = paymentFor(v.id, state.reportYear, state.reportMonth);
+    const status = p ? null : dueStatus(v.id, state.reportYear, state.reportMonth);
     return `<tr>
       <td class="nm">${esc(v.name)}</td>
       <td>${esc(v.autoNo)}${v.autoNo2?`<br><span style="color:var(--muted); font-size:11.5px;">${esc(v.autoNo2)}</span>`:''}</td>
-      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}</td>
+      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}${status?`<br><span class="due-badge due-${status}">${dueStatusLabel(status)}</span>`:''}</td>
       <td>${fmt(p ? p.amount : getDue(v.id, state.reportYear, state.reportMonth))}</td>
+      <td>${p ? esc(p.mode||'Cash') : '—'}</td>
       <td>${p ? `<button class="btn small ghost" data-action="download-receipt" data-id="${p.id}">⬇ Receipt</button>` : '—'}</td>
     </tr>`;
   }).join('');
@@ -1251,6 +1706,7 @@ function renderMonthlyReport(){
   return `
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       <select class="report-select" id="reportMonthSel" style="flex:1; min-width:140px; margin-top:0;">${monthOptions}</select>
+      <button class="btn ghost small" data-action="view-monthly-report" style="margin-top:0;">👁 View Report</button>
       <button class="btn primary small" data-action="download-monthly-report" style="margin-top:0;">⬇ Download Report</button>
     </div>
     <div class="grid2" style="margin-top:12px;">
@@ -1259,7 +1715,7 @@ function renderMonthlyReport(){
     </div>
     ${data.vehicles.length===0 ? `<div class="empty"><div class="big">▤</div>No entries yet.</div>` : `
     <div class="report-table-wrap"><table class="rep">
-      <thead><tr><th>Name</th><th>Auto No.</th><th>Status</th><th>Amount</th><th>Receipt</th></tr></thead>
+      <thead><tr><th>Name</th><th>Auto No.</th><th>Status</th><th>Amount</th><th>Mode</th><th>Receipt</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`}
   `;
@@ -1276,11 +1732,13 @@ function renderIndividualReport(){
   const yearPayments = vehiclePaymentsForYear(v.id, state.reportYear);
   const rows = MONTHS.map((m,i)=>{
     const month=i+1; const p = yearPayments[month];
+    const status = p ? null : dueStatus(v.id, state.reportYear, month);
     return `<tr>
       <td class="nm">${m} ${state.reportYear}</td>
-      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}</td>
+      <td>${p ? `<span class="badge-tag paid">Paid</span>` : `<span class="badge-tag unpaid">Unpaid</span>`}${status?`<br><span class="due-badge due-${status}">${dueStatusLabel(status)}</span>`:''}</td>
       <td>${fmt(p ? p.amount : getDue(v.id, state.reportYear, month))}</td>
       <td>${p ? esc(p.date) : '—'}</td>
+      <td>${p ? esc(p.mode||'Cash') : '—'}</td>
       <td>${p ? `<button class="btn small ghost" data-action="download-receipt" data-id="${p.id}">⬇ Receipt</button>` : '—'}</td>
     </tr>`;
   }).join('');
@@ -1292,9 +1750,13 @@ function renderIndividualReport(){
   return `
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       <select class="report-select" id="reportVehicleSel" style="flex:1; min-width:180px; margin-top:0;">${options}</select>
+      <button class="btn ghost small" data-action="view-individual-report" style="margin-top:0;">👁 View Report</button>
       <button class="btn primary small" data-action="download-individual-report" style="margin-top:0;">⬇ Download Report</button>
     </div>
-    <div class="hint" style="margin-top:8px; font-size:13px;">${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' &nbsp;/&nbsp; '+esc(v.autoNo2):''}</div>
+    <div class="hint" style="margin-top:8px; font-size:13px;">
+      ${esc(v.vehicleType||'Auto')} · ${esc(v.autoNo)}${v.autoNo2?' &nbsp;/&nbsp; '+esc(v.autoNo2):''}${v.mobile?' &nbsp;·&nbsp; 📞 '+esc(v.mobile):''}${v.dueDay?' &nbsp;·&nbsp; Due day '+v.dueDay:''}
+      ${v.remarks?`<br>📝 ${esc(v.remarks)}`:''}
+    </div>
     <div class="grid2 grid4" style="margin-top:12px;">
       <div class="stat"><div class="label">All-time Paid</div><div class="amt">${fmt(allTime)}</div></div>
       <div class="stat"><div class="label">Months Paid ${state.reportYear}</div><div class="amt">${monthsPaidCount}/12</div></div>
@@ -1302,7 +1764,7 @@ function renderIndividualReport(){
       <div class="stat unpaid"><div class="label">Unpaid ${state.reportYear}</div><div class="amt">${fmt(unpaidYear)}</div></div>
     </div>
     <div class="report-table-wrap"><table class="rep">
-      <thead><tr><th>Month</th><th>Status</th><th>Amount</th><th>Date Paid</th><th>Receipt</th></tr></thead>
+      <thead><tr><th>Month</th><th>Status</th><th>Amount</th><th>Date Paid</th><th>Mode</th><th>Receipt</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     <div class="actions" style="margin-top:14px;">
@@ -1363,6 +1825,20 @@ function openAddModal(prefillVehicleId){
     </div>
     <div class="row2">
       <div class="field">
+        <label>Mobile Number <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+        <input type="tel" id="fMobile" placeholder="10-digit number" value="${pv&&pv.mobile?esc(pv.mobile):''}" maxlength="10">
+      </div>
+      <div class="field">
+        <label>Default Due Day <span style="text-transform:none; font-weight:400;">(optional — just a suggestion when setting a month's due date)</span></label>
+        <input type="number" id="fDueDay" placeholder="e.g. 5" min="1" max="28" value="${pv&&pv.dueDay?pv.dueDay:''}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Remarks <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+      <input type="text" id="fRemarks" placeholder="any notes about this vehicle" value="${pv&&pv.remarks?esc(pv.remarks):''}">
+    </div>
+    <div class="row2">
+      <div class="field">
         <label>Date Paid</label>
         <input type="date" id="fDate" value="${todayISO()}">
       </div>
@@ -1371,9 +1847,17 @@ function openAddModal(prefillVehicleId){
         <input type="number" id="fYear" value="${state.year}" min="2000" max="2100">
       </div>
     </div>
-    <div class="field">
-      <label>Amount (per month)</label>
-      <input type="number" id="fAmount" placeholder="e.g. 500" value="" min="0">
+    <div class="row2">
+      <div class="field">
+        <label>Amount (per month)</label>
+        <input type="number" id="fAmount" placeholder="e.g. 500" value="" min="0">
+      </div>
+      <div class="field">
+        <label>Payment Mode</label>
+        <select id="fMode">
+          ${PAYMENT_MODES.map(m=>`<option value="${m}">${m}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="field">
       <label>Month(s) covered — select more if paying for multiple months at once</label>
@@ -1382,6 +1866,53 @@ function openAddModal(prefillVehicleId){
     <div class="modal-actions">
       <button class="btn ghost" data-action="close-modal">Cancel</button>
       <button class="btn primary" data-action="submit-add">Save Entry</button>
+    </div>
+  `);
+}
+
+function openEditVehicleModal(vehicleId){
+  const v = getVehicle(vehicleId);
+  if(!v) return;
+  openModal(`
+    <button class="close-x" data-action="close-modal">✕</button>
+    <h2>Edit Vehicle Details</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="vName" value="${esc(v.name)}">
+    </div>
+    <div class="field">
+      <label>Vehicle Type</label>
+      <select id="vType">
+        ${VEHICLE_TYPES.map(t=>`<option value="${t}" ${v.vehicleType===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Auto No.</label>
+        <input type="text" id="vAuto" value="${esc(v.autoNo)}" autocapitalize="characters">
+      </div>
+      <div class="field">
+        <label>Auto No. 2 <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+        <input type="text" id="vAuto2" value="${v.autoNo2?esc(v.autoNo2):''}" autocapitalize="characters">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Mobile Number <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+        <input type="tel" id="vMobile" value="${v.mobile?esc(v.mobile):''}" maxlength="10">
+      </div>
+      <div class="field">
+        <label>Default Due Day <span style="text-transform:none; font-weight:400;">(optional — just a suggestion when setting a month's due date)</span></label>
+        <input type="number" id="vDueDay" min="1" max="28" value="${v.dueDay?v.dueDay:''}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Remarks <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+      <input type="text" id="vRemarks" value="${v.remarks?esc(v.remarks):''}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-action="close-modal">Cancel</button>
+      <button class="btn primary" data-action="submit-edit-vehicle" data-id="${v.id}">Save</button>
     </div>
   `);
 }
@@ -1403,6 +1934,12 @@ function openEditModal(paymentId){
         <label>Amount</label>
         <input type="number" id="eAmount" value="${p.amount}" min="0">
       </div>
+    </div>
+    <div class="field">
+      <label>Payment Mode</label>
+      <select id="eMode">
+        ${PAYMENT_MODES.map(m=>`<option value="${m}" ${p.mode===m?'selected':''}>${m}</option>`).join('')}
+      </select>
     </div>
     <div class="modal-actions">
       <button class="btn danger" data-action="delete-payment" data-id="${p.id}">Delete</button>
@@ -1430,6 +1967,12 @@ function openMonthPayModal(vehicleId, year, month){
         <input type="number" id="payAmount" min="0" value="${due || ''}" placeholder="0">
       </div>
     </div>
+    <div class="field">
+      <label>Payment Mode</label>
+      <select id="payMode">
+        ${PAYMENT_MODES.map(m=>`<option value="${m}">${m}</option>`).join('')}
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn ghost" data-action="close-modal">Cancel</button>
       <button class="btn primary" data-action="submit-month-pay" data-vid="${vehicleId}" data-year="${year}" data-month="${month}">Save</button>
@@ -1441,13 +1984,22 @@ function openDueModal(vehicleId, year, month){
   const v = getVehicle(vehicleId);
   if(!v) return;
   const due = getDue(vehicleId, year, month);
+  let dueDate = getDueDate(vehicleId, year, month);
+  if(!dueDate && v.dueDay){
+    // convenience default, suggested only — the user still has to save it to make it stick
+    dueDate = `${year}-${String(month).padStart(2,'0')}-${String(v.dueDay).padStart(2,'0')}`;
+  }
   openModal(`
     <button class="close-x" data-action="close-modal">✕</button>
     <h2>Set Amount</h2>
-    <div class="hint">${esc(v.name)} · ${esc(v.autoNo)} · ${MONTHS[month-1]} ${year} — the expected amount for this month, used in Unpaid totals until it's paid.</div>
+    <div class="hint">${esc(v.name)} · ${esc(v.autoNo)} · ${MONTHS[month-1]} ${year} — the expected amount for this month, used in Unpaid totals until it's paid. A due date is optional and only used for the Due/Overdue badges — leave it blank for no tracking on this month.</div>
     <div class="field">
       <label>Amount</label>
       <input type="number" id="dueAmount" min="0" value="${due || ''}" placeholder="0">
+    </div>
+    <div class="field">
+      <label>Due Date <span style="text-transform:none; font-weight:400;">(optional — edit anytime, e.g. to give more time)</span></label>
+      <input type="date" id="dueDateInput" value="${dueDate||''}">
     </div>
     <div class="modal-actions">
       <button class="btn ghost" data-action="close-modal">Cancel</button>
@@ -1521,7 +2073,7 @@ function openConfirm(message, actionAttrs){
 /* ---------------- Event wiring ---------------- */
 function wireDynamicHandlers(){
   // live auto-no formatting: force caps, strip special characters as the user types
-  ['fAuto','fAuto2'].forEach(id=>{
+  ['fAuto','fAuto2','vAuto','vAuto2'].forEach(id=>{
     const el = document.getElementById(id);
     if(el && !el._autoWired){
       el._autoWired = true;
@@ -1535,6 +2087,9 @@ function wireDynamicHandlers(){
       });
     }
   });
+  // settings tab: import file picker
+  const importInput = document.getElementById('importFileInput');
+  if(importInput) importInput.onchange = ()=> importJSONFile(importInput);
   // vehicle tab filters
   const sName = document.getElementById('searchName');
   if(sName) sName.oninput = ()=>{ state.searchName = sName.value; renderVehicleListSection(); };
@@ -1569,6 +2124,43 @@ function wireDynamicHandlers(){
         render();
       } else if(action==='show-stat'){
         openStatModal(el.dataset.type);
+      } else if(action==='show-notif-panel'){
+        openNotifPanel();
+      } else if(action==='export-json'){
+        exportJSON();
+      } else if(action==='export-csv'){
+        exportCSV();
+      } else if(action==='export-excel'){
+        exportExcel();
+      } else if(action==='toggle-auto-backup'){
+        data.settings.autoBackupEnabled = !data.settings.autoBackupEnabled;
+        if(data.settings.autoBackupEnabled) snapshotBackup();
+        saveData(); render();
+        showToast('Auto-backup turned ' + (data.settings.autoBackupEnabled?'on':'off'));
+      } else if(action==='restore-backup'){
+        if(confirm('Restore this snapshot? It will replace all data currently on this device.')){
+          restoreBackup(el.dataset.key);
+        }
+      } else if(action==='save-due-soon-days'){
+        const val = Math.max(1, Math.min(30, Number(document.getElementById('dueSoonDaysInput').value)||3));
+        data.settings.dueSoonDays = val;
+        saveData(); render();
+        showToast('Due Soon window updated');
+      } else if(action==='toggle-browser-notif'){
+        if(data.settings.browserNotifEnabled){
+          data.settings.browserNotifEnabled = false;
+          saveData(); render();
+          showToast('Browser notifications turned off');
+        } else if('Notification' in window){
+          Notification.requestPermission().then(perm=>{
+            data.settings.browserNotifEnabled = (perm==='granted');
+            saveData(); render();
+            if(perm==='granted'){ showToast('Browser notifications turned on'); maybeFireBrowserNotification(); }
+            else { showToast('Notification permission was not granted'); }
+          });
+        } else {
+          showToast('Browser notifications are not supported here');
+        }
       } else if(action==='jump-to-vehicle'){
         state.tab = 'vehicles';
         state.expanded = el.dataset.id;
@@ -1586,12 +2178,14 @@ function wireDynamicHandlers(){
         openDueModal(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month));
       } else if(action==='submit-due'){
         const amt = Number(document.getElementById('dueAmount').value)||0;
-        setDue(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt);
+        const dd = document.getElementById('dueDateInput').value || null;
+        setDue(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt, dd);
         closeModal();
       } else if(action==='submit-month-pay'){
         const amt = Number(document.getElementById('payAmount').value)||0;
         const dt = document.getElementById('payDate').value || todayISO();
-        markPaid(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt, dt);
+        const md = document.getElementById('payMode') ? document.getElementById('payMode').value : 'Cash';
+        markPaid(el.dataset.vid, Number(el.dataset.year), Number(el.dataset.month), amt, dt, md);
         closeModal();
       } else if(action==='edit-payment'){
         openEditModal(el.dataset.id);
@@ -1606,6 +2200,19 @@ function wireDynamicHandlers(){
         openConfirm(`All entries for <b>${esc(v.name)} (${esc(v.autoNo)})</b> will be permanently deleted.`, `data-action="do-delete-vehicle" data-id="${el.dataset.id}"`);
       } else if(action==='do-delete-vehicle'){
         deleteVehicle(el.dataset.id); closeModal(); state.expanded=null;
+      } else if(action==='edit-vehicle'){
+        openEditVehicleModal(el.dataset.id);
+      } else if(action==='submit-edit-vehicle'){
+        updateVehicleDetails(el.dataset.id, {
+          name: document.getElementById('vName').value,
+          autoNo: document.getElementById('vAuto').value,
+          autoNo2: document.getElementById('vAuto2').value,
+          vehicleType: document.getElementById('vType').value,
+          mobile: document.getElementById('vMobile').value,
+          remarks: document.getElementById('vRemarks').value,
+          dueDay: document.getElementById('vDueDay').value,
+        });
+        closeModal();
       } else if(action==='download-receipt'){
         downloadReceipt(el.dataset.id);
       } else if(action==='download-overall-report'){
@@ -1614,6 +2221,12 @@ function wireDynamicHandlers(){
         downloadMonthlyReport();
       } else if(action==='download-individual-report'){
         downloadIndividualReport();
+      } else if(action==='view-overall-report'){
+        viewOverallReport();
+      } else if(action==='view-monthly-report'){
+        viewMonthlyReport();
+      } else if(action==='view-individual-report'){
+        viewIndividualReport();
       } else if(action==='quick-add'){
         openAddModal(el.dataset.id);
       } else if(action==='mark-paid-now'){
@@ -1634,21 +2247,26 @@ function submitAdd(){
   const autoNo = cleanAutoNo(document.getElementById('fAuto').value);
   const autoNo2 = cleanAutoNo(document.getElementById('fAuto2').value);
   const vehicleType = document.getElementById('fType').value;
+  const mobile = cleanMobile(document.getElementById('fMobile').value);
+  const dueDay = Number(document.getElementById('fDueDay').value) || null;
+  const remarks = document.getElementById('fRemarks').value.trim();
   const date = document.getElementById('fDate').value || todayISO();
   const year = Number(document.getElementById('fYear').value) || state.year;
   const amount = Number(document.getElementById('fAmount').value) || 0;
+  const mode = document.getElementById('fMode').value || 'Cash';
   const months = [...document.querySelectorAll('#monthGrid input:checked')].map(c=>Number(c.value));
 
   if(!name || !autoNo){ showToast('Name and Auto No. are required'); return; }
   if(months.length===0){ showToast('Select at least one month'); return; }
 
-  addEntry({name, autoNo, autoNo2, vehicleType, date, year, months, amount});
+  addEntry({name, autoNo, autoNo2, vehicleType, mobile, remarks, dueDay, date, year, months, amount, mode});
   closeModal();
 }
 function submitEdit(paymentId){
   const amount = Number(document.getElementById('eAmount').value)||0;
   const date = document.getElementById('eDate').value || todayISO();
-  editPayment(paymentId, amount, date);
+  const mode = document.getElementById('eMode') ? document.getElementById('eMode').value : 'Cash';
+  editPayment(paymentId, amount, date, mode);
   closeModal();
 }
 
@@ -1658,7 +2276,9 @@ document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') 
 /* ---------------- Init ---------------- */
 (async function init(){
   await loadData();
+  maybeAutoBackupOnLoad();
   render();
+  maybeFireBrowserNotification();
 })();
 </script>
 </body>
